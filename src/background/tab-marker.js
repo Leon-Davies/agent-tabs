@@ -10,6 +10,13 @@ export const COLOURS = Object.freeze({
   orange: "#FA7B17"
 });
 
+export const STATUS_COLOURS = Object.freeze({
+  idle: "#EA4335",
+  working: "#F9AB00",
+  ready: "#34A853",
+  error: "#EA4335"
+});
+
 export const MENU_IDS = Object.freeze({
   colourRoot: "agent-tabs-colour-root",
   colourPrefix: "agent-tabs-colour-",
@@ -18,6 +25,7 @@ export const MENU_IDS = Object.freeze({
 
 const STORAGE_PREFIX = "agent-tabs-colour:";
 const STATE_PREFIX = "agent-tabs-state:";
+const VALID_STATES = Object.freeze(["idle", "working", "ready", "error"]);
 
 function titleCase(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -74,7 +82,7 @@ export function colourFromMenuId(menuItemId) {
   return Object.hasOwn(COLOURS, colour) ? colour : null;
 }
 
-export function renderColourFavicon(hexColour, state = "idle") {
+export function renderColourFavicon(hexColour = null, state = null) {
   const markerId = "agent-tabs-colour-favicon";
   const originalRelAttribute = "data-agent-tabs-original-rel";
   const observerKey = "__agentTabsFaviconObserver";
@@ -121,17 +129,21 @@ export function renderColourFavicon(hexColour, state = "idle") {
     }
 
     context.clearRect(0, 0, 32, 32);
-    context.fillStyle = colour;
-    context.beginPath();
 
-    if (typeof context.roundRect === "function") {
-      context.roundRect(1, 1, 30, 30, 7);
-      context.fill();
-    } else {
-      context.fillRect(1, 1, 30, 30);
+    if (colour) {
+      context.fillStyle = colour;
+      context.beginPath();
+
+      if (typeof context.roundRect === "function") {
+        context.roundRect(1, 1, 30, 30, 7);
+        context.fill();
+      } else {
+        context.fillRect(1, 1, 30, 30);
+      }
     }
 
     const badgeColours = {
+      idle: "#EA4335",
       working: "#F9AB00",
       ready: "#34A853",
       error: "#EA4335"
@@ -139,15 +151,35 @@ export function renderColourFavicon(hexColour, state = "idle") {
     const badgeColour = badgeColours[markerState] || null;
 
     if (badgeColour) {
+      const standalone = !colour;
+      const centreX = standalone ? 16 : 24;
+      const centreY = standalone ? 16 : 24;
+      const outerRadius = standalone ? 10 : 7;
+      const innerRadius = standalone ? 7 : 5;
+
       context.fillStyle = "#ffffff";
       context.beginPath();
-      context.arc(24, 24, 7, 0, Math.PI * 2);
+      context.arc(centreX, centreY, outerRadius, 0, Math.PI * 2);
       context.fill();
 
       context.fillStyle = badgeColour;
       context.beginPath();
-      context.arc(24, 24, 5, 0, Math.PI * 2);
+      context.arc(centreX, centreY, innerRadius, 0, Math.PI * 2);
       context.fill();
+
+      if (markerState === "error") {
+        context.strokeStyle = "#ffffff";
+        context.lineWidth = standalone ? 2.5 : 1.5;
+        context.lineCap = "round";
+        context.beginPath();
+        context.moveTo(centreX, centreY - (standalone ? 4 : 3));
+        context.lineTo(centreX, centreY + (standalone ? 1 : 0.5));
+        context.stroke();
+        context.fillStyle = "#ffffff";
+        context.beginPath();
+        context.arc(centreX, centreY + (standalone ? 4 : 3), standalone ? 1.2 : 0.8, 0, Math.PI * 2);
+        context.fill();
+      }
     }
 
     return canvas.toDataURL("image/png");
@@ -214,7 +246,8 @@ export function renderColourFavicon(hexColour, state = "idle") {
   return {
     markerInstalled: Boolean(document.getElementById(markerId)),
     suppressedIcons,
-    state
+    state,
+    hasManualColour: Boolean(hexColour)
   };
 }
 
@@ -243,11 +276,15 @@ export function removeColourFavicon() {
   return { restoredIcons };
 }
 
-export async function getStoredTabState(tabId, storage = chrome.storage.session) {
+export async function getExplicitStoredTabState(tabId, storage = chrome.storage.session) {
   const key = stateStorageKey(tabId);
   const stored = await storage.get(key);
   const state = stored[key];
-  return ["idle", "working", "ready", "error"].includes(state) ? state : "idle";
+  return VALID_STATES.includes(state) ? state : null;
+}
+
+export async function getStoredTabState(tabId, storage = chrome.storage.session) {
+  return (await getExplicitStoredTabState(tabId, storage)) || "idle";
 }
 
 export async function applyColourToTab(tabId, colour, apis = chrome) {
@@ -259,7 +296,7 @@ export async function applyColourToTab(tabId, colour, apis = chrome) {
     throw new RangeError(`Unsupported colour: ${colour}`);
   }
 
-  const state = await getStoredTabState(tabId, apis.storage.session);
+  const state = await getExplicitStoredTabState(tabId, apis.storage.session);
   const results = await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
@@ -280,7 +317,7 @@ export async function setTabState(tabId, state, apis = chrome) {
     throw new TypeError("A numeric tab id is required.");
   }
 
-  if (!["idle", "working", "ready", "error"].includes(state)) {
+  if (!VALID_STATES.includes(state)) {
     throw new RangeError(`Unsupported tab state: ${state}`);
   }
 
@@ -289,15 +326,12 @@ export async function setTabState(tabId, state, apis = chrome) {
   const colourKey = storageKey(tabId);
   const stored = await apis.storage.session.get(colourKey);
   const colour = stored[colourKey];
-
-  if (!Object.hasOwn(COLOURS, colour)) {
-    return false;
-  }
+  const hexColour = Object.hasOwn(COLOURS, colour) ? COLOURS[colour] : null;
 
   await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [COLOURS[colour], state]
+    args: [hexColour, state]
   });
 
   return true;
@@ -308,15 +342,25 @@ export async function removeColourFromTab(tabId, apis = chrome) {
     throw new TypeError("A numeric tab id is required.");
   }
 
+  await apis.storage.session.remove(storageKey(tabId));
+  const state = await getExplicitStoredTabState(tabId, apis.storage.session);
+
+  if (state) {
+    await apis.scripting.executeScript({
+      target: { tabId },
+      func: renderColourFavicon,
+      args: [null, state]
+    });
+    return;
+  }
+
   await apis.scripting.executeScript({
     target: { tabId },
     func: removeColourFavicon
   });
-
-  await apis.storage.session.remove(storageKey(tabId));
 }
 
-export async function reapplyStoredColour(tabId, apis = chrome) {
+export async function reapplyStoredMarker(tabId, apis = chrome) {
   if (!Number.isInteger(tabId)) {
     return false;
   }
@@ -324,20 +368,23 @@ export async function reapplyStoredColour(tabId, apis = chrome) {
   const colourKey = storageKey(tabId);
   const stored = await apis.storage.session.get(colourKey);
   const colour = stored[colourKey];
+  const state = await getExplicitStoredTabState(tabId, apis.storage.session);
+  const hasColour = Object.hasOwn(COLOURS, colour);
 
-  if (!Object.hasOwn(COLOURS, colour)) {
+  if (!hasColour && !state) {
     return false;
   }
 
-  const state = await getStoredTabState(tabId, apis.storage.session);
   await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [COLOURS[colour], state]
+    args: [hasColour ? COLOURS[colour] : null, state]
   });
 
   return true;
 }
+
+export const reapplyStoredColour = reapplyStoredMarker;
 
 export async function forgetTab(tabId, storage = chrome.storage.session) {
   if (Number.isInteger(tabId)) {
