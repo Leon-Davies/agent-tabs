@@ -29,8 +29,6 @@ export function storageKey(tabId) {
 export async function installContextMenus(contextMenus = chrome.contextMenus) {
   await contextMenus.removeAll();
 
-  // Keep exactly one top-level extension item. Chrome automatically collapses
-  // multiple visible items from one extension into an extension-owned parent.
   await contextMenus.create({
     id: MENU_IDS.colourRoot,
     title: "Colour",
@@ -73,26 +71,141 @@ export function colourFromMenuId(menuItemId) {
 
 export function renderColourFavicon(hexColour) {
   const markerId = "agent-tabs-colour-favicon";
-  const existing = document.getElementById(markerId);
-  const link = existing || document.createElement("link");
-  const svg = [
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">',
-    `<rect x="2" y="2" width="28" height="28" rx="8" fill="${hexColour}"/>`,
-    "</svg>"
-  ].join("");
+  const originalRelAttribute = "data-agent-tabs-original-rel";
+  const observerKey = "__agentTabsFaviconObserver";
+  const head = document.head || document.documentElement;
 
-  link.id = markerId;
-  link.rel = "icon";
-  link.type = "image/svg+xml";
-  link.href = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+  const isFaviconLink = (node) => {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE || node.tagName !== "LINK") {
+      return false;
+    }
 
-  // Appending an existing node moves it to the end of <head>, which keeps the
-  // visual override later than the site's ordinary favicon declarations.
-  (document.head || document.documentElement).appendChild(link);
+    const rel = (node.getAttribute("rel") || "").toLowerCase();
+    return rel.split(/\s+/).includes("icon");
+  };
+
+  const suppressSiteFavicon = (link) => {
+    if (link.id === markerId || !isFaviconLink(link)) {
+      return false;
+    }
+
+    if (!link.hasAttribute(originalRelAttribute)) {
+      link.setAttribute(originalRelAttribute, link.getAttribute("rel") || "icon");
+    }
+
+    link.setAttribute("rel", "agent-tabs-original-icon");
+    return true;
+  };
+
+  let suppressedIcons = 0;
+  for (const link of head.querySelectorAll("link[rel]")) {
+    if (suppressSiteFavicon(link)) {
+      suppressedIcons += 1;
+    }
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 32;
+  canvas.height = 32;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("Unable to create Agent Tabs favicon canvas.");
+  }
+
+  context.clearRect(0, 0, 32, 32);
+  context.fillStyle = hexColour;
+  context.beginPath();
+
+  if (typeof context.roundRect === "function") {
+    context.roundRect(1, 1, 30, 30, 7);
+    context.fill();
+  } else {
+    context.fillRect(1, 1, 30, 30);
+  }
+
+  let marker = document.getElementById(markerId);
+  if (!marker) {
+    marker = document.createElement("link");
+    marker.id = markerId;
+  }
+
+  marker.rel = "icon";
+  marker.type = "image/png";
+  marker.sizes = "32x32";
+  marker.href = canvas.toDataURL("image/png");
+  head.appendChild(marker);
+
+  if (!globalThis[observerKey]) {
+    const observer = new MutationObserver((mutations) => {
+      const activeMarker = document.getElementById(markerId);
+      if (!activeMarker) {
+        return;
+      }
+
+      for (const mutation of mutations) {
+        if (mutation.type === "attributes") {
+          suppressSiteFavicon(mutation.target);
+          continue;
+        }
+
+        for (const addedNode of mutation.addedNodes) {
+          if (isFaviconLink(addedNode)) {
+            suppressSiteFavicon(addedNode);
+          }
+
+          if (addedNode.querySelectorAll) {
+            for (const link of addedNode.querySelectorAll("link[rel]")) {
+              suppressSiteFavicon(link);
+            }
+          }
+        }
+      }
+
+      // Keep the marker as the only active favicon declaration and as the
+      // final icon node after SPA frameworks mutate head metadata.
+      if (activeMarker.parentNode === head && activeMarker !== head.lastElementChild) {
+        head.appendChild(activeMarker);
+      }
+    });
+
+    observer.observe(head, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["rel"]
+    });
+
+    globalThis[observerKey] = observer;
+  }
+
+  return {
+    markerInstalled: Boolean(document.getElementById(markerId)),
+    suppressedIcons
+  };
 }
 
 export function removeColourFavicon() {
-  document.getElementById("agent-tabs-colour-favicon")?.remove();
+  const markerId = "agent-tabs-colour-favicon";
+  const originalRelAttribute = "data-agent-tabs-original-rel";
+  const observerKey = "__agentTabsFaviconObserver";
+
+  if (globalThis[observerKey]) {
+    globalThis[observerKey].disconnect();
+    delete globalThis[observerKey];
+  }
+
+  document.getElementById(markerId)?.remove();
+
+  let restoredIcons = 0;
+  for (const link of document.querySelectorAll(`link[${originalRelAttribute}]`)) {
+    const originalRel = link.getAttribute(originalRelAttribute);
+    link.removeAttribute(originalRelAttribute);
+    link.setAttribute("rel", originalRel || "icon");
+    restoredIcons += 1;
+  }
+
+  return { restoredIcons };
 }
 
 export async function applyColourToTab(tabId, colour, apis = chrome) {
@@ -104,13 +217,19 @@ export async function applyColourToTab(tabId, colour, apis = chrome) {
     throw new RangeError(`Unsupported colour: ${colour}`);
   }
 
-  await apis.scripting.executeScript({
+  const results = await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
     args: [COLOURS[colour]]
   });
 
+  const result = results?.[0]?.result;
+  if (result && result.markerInstalled === false) {
+    throw new Error("Agent Tabs marker was not installed in the selected tab.");
+  }
+
   await apis.storage.session.set({ [storageKey(tabId)]: colour });
+  return result || null;
 }
 
 export async function removeColourFromTab(tabId, apis = chrome) {
