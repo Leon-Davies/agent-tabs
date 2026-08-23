@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Agent Tabs",
+  "version": "0.2.0",
+  "description": "Add purely visual colour markers and ChatGPT state badges to individual Chrome tabs.",
+  "minimum_chrome_version": "150",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "src/content/chatgpt-state.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,22 +1,31 @@
 # Agent Tabs
 
-Agent Tabs is a Chrome extension for visually organizing browser tabs used as long-running AI or agent workspaces.
+Agent Tabs is a Chrome extension for visually separating tabs used for ChatGPT agents or other long-running work. Assign each tab a colour, and coloured ChatGPT tabs also show a small live status dot.
 
-The project is intentionally generic: colours and future status indicators are not tied to any particular project, provider, or workflow.
+## Install
 
-## Current development target
+1. Download or clone this repository.
+2. Open `chrome://extensions` in Chrome.
+3. Turn on **Developer mode**.
+4. Click **Load unpacked**.
+5. Select the `agent-tabs` folder containing `manifest.json`.
+6. Refresh any ChatGPT tabs that were already open.
 
-The first milestone provides manual per-tab colour assignment from the Chrome tab-strip context menu by using native Chrome tab groups.
+Requires Chrome 150 or newer.
 
-Planned follow-up work will add optional live agent-state indicators (for example working, response ready, viewed, or error) behind narrowly scoped site permissions.
+## Use
 
-## Development principles
+Right-click a tab → **Colour** → choose a colour.
 
-- Manifest V3
-- No framework or build step for the initial implementation
-- No backend
-- Minimal browser permissions
-- No analytics or remote data collection
-- Generic project/agent semantics
+On coloured ChatGPT tabs:
 
-See `docs/architecture.md` on the development branch for implementation details.
+- 🟡 **Yellow** — working / generating
+- 🟢 **Green** — finished in the background and ready to view
+- 🔴 **Red** — error detected
+- **No dot** — idle or already viewed
+
+| Working | Ready |
+| --- | --- |
+| ![Working state](docs/images/state-working.png) | ![Ready state](docs/images/state-ready.png) |
+
+Use **Colour → Remove colour** to restore the normal favicon.
