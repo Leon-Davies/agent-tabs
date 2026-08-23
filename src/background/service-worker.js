@@ -3,10 +3,15 @@ import {
   applyColourToTab,
   colourFromMenuId,
   forgetTab,
+  getStoredTabState,
   installContextMenus,
+  removeColourFromTab,
   reapplyStoredColour,
-  removeColourFromTab
+  setTabState
 } from "./tab-marker.js";
+import { deriveTabState } from "./chatgpt-state-machine.js";
+
+const CHATGPT_SIGNAL = "agent-tabs:chatgpt-signal";
 
 chrome.runtime.onInstalled.addListener(() => {
   installContextMenus().catch((error) => {
@@ -35,17 +40,38 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== CHATGPT_SIGNAL || !Number.isInteger(sender.tab?.id)) {
+    return false;
+  }
+
+  handleChatGptSignal(sender.tab.id, message.phase, Boolean(message.visible))
+    .then(() => sendResponse({ ok: true }))
+    .catch((error) => {
+      console.error("Agent Tabs failed to process a ChatGPT state signal.", error);
+      sendResponse({ ok: false });
+    });
+
+  return true;
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status !== "complete") {
     return;
   }
 
-  // activeTab access survives same-origin navigation/reloads. If Chrome has
-  // revoked access (for example after cross-origin navigation), fail quietly;
-  // the user can simply assign a colour again on the new page.
   reapplyStoredColour(tabId).catch(() => {});
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   forgetTab(tabId).catch(() => {});
 });
+
+async function handleChatGptSignal(tabId, phase, visible) {
+  const previousState = await getStoredTabState(tabId);
+  const nextState = deriveTabState(previousState, phase, visible);
+
+  if (nextState !== previousState) {
+    await setTabState(tabId, nextState);
+  }
+}
