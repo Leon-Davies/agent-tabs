@@ -6,7 +6,7 @@ import {
   getStoredTabState,
   installContextMenus,
   removeColourFromTab,
-  reapplyStoredColour,
+  reapplyStoredMarker,
   setTabState
 } from "./tab-marker.js";
 import { deriveTabState } from "./chatgpt-state-machine.js";
@@ -60,7 +60,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
     return;
   }
 
-  reapplyStoredColour(tabId).catch(() => {});
+  reapplyStoredMarker(tabId).catch(() => {});
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -71,7 +71,7 @@ async function handleChatGptSignal(tabId, phase, visible) {
   const previousState = await getStoredTabState(tabId);
   const nextState = deriveTabState(previousState, phase, visible);
 
-  if (nextState !== previousState) {
-    await setTabState(tabId, nextState);
-  }
+  // Always render the current state. This makes automatic ChatGPT status
+  // lights independent from whether the user has assigned a manual colour.
+  await setTabState(tabId, nextState);
 }
