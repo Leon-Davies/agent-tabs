@@ -4,13 +4,13 @@ Agent Tabs is a small Chrome extension for visually organizing browser tabs used
 
 It is intentionally generic: colours and future status indicators are not tied to any particular project, AI provider, or workflow.
 
-## V0.1 — manual tab colours
+## V0.1 — visual tab colour markers
 
 V0.1 adds a native tab-strip context menu:
 
-**Right-click tab > Agent Tabs > Colour > choose a colour**
+**Right-click tab > Colour > choose a colour**
 
-Available colours are Chrome's native tab-group colours:
+Available colours:
 
 - Grey
 - Blue
@@ -22,22 +22,26 @@ Available colours are Chrome's native tab-group colours:
 - Cyan
 - Orange
 
-Choose **Agent Tabs > Remove colour** to remove the individual colour.
+Choose **Colour > Remove colour** to restore the site's normal favicon.
 
 ### How it works
 
-Chrome does not provide extensions with an API for painting an arbitrary individual tab background. Agent Tabs uses a one-tab native Chrome tab group instead. This keeps the visual treatment native to Chrome.
+Chrome does not expose an extension API for painting an arbitrary individual tab background. Native tab colours belong to Chrome tab groups, which also means they are interactive/collapsible.
 
-If a tab is already in a multi-tab group, applying an individual Agent Tabs colour detaches that one tab and puts it into its own coloured group. See [`docs/architecture.md`](docs/architecture.md) for the design details and trade-offs.
+Agent Tabs deliberately does **not** create tab groups. Instead, the selected colour is rendered as a small rounded-square favicon marker in the tab's icon position. The marker is purely visual: clicking it cannot collapse, expand, move, or group tabs.
+
+The colour is remembered for the life of the browser tab and is reapplied after same-origin reloads/navigation when Chrome still grants the extension temporary access to that tab.
 
 ## Privacy and permissions
 
-V0.1 requests only:
+V0.1 requests:
 
+- `activeTab`
 - `contextMenus`
-- `tabGroups`
+- `scripting`
+- `storage`
 
-It requests **no host permissions**, has no content script, makes no network requests, and does not read webpage content.
+It requests **no persistent host permissions** and makes no network requests. Page access is granted temporarily only when the user explicitly chooses an Agent Tabs context-menu command. The extension only injects/removes its favicon marker; it does not read or store page text, prompts, responses, or browsing history.
 
 ## Requirements
 
@@ -52,7 +56,7 @@ Chrome 150 introduced extension entries in the native tab-strip right-click menu
 3. Enable **Developer mode**.
 4. Click **Load unpacked**.
 5. Select the repository root (the directory containing `manifest.json`).
-6. Right-click any normal Chrome tab and look for **Agent Tabs**.
+6. Right-click any normal Chrome tab and look for **Colour**.
 
 After changing extension code, use the **Reload** button on the Agent Tabs card in `chrome://extensions`.
 
@@ -66,7 +70,7 @@ node --test tests/*.test.mjs
 
 ## Roadmap
 
-- **V0.1:** manual native tab colour assignment
+- **V0.1:** manual pure-visual colour marker
 - **V0.2:** optional working/response-ready state detection
 - **V0.3:** read/unread state and resilient detector hardening
 - Later: optional generic agent metadata/dashboard, only if it proves useful
