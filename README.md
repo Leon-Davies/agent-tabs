@@ -1,31 +1,43 @@
 # Agent Tabs
 
-Agent Tabs is a Chrome extension for visually separating tabs used for ChatGPT agents or other long-running work. Assign each tab a colour, and coloured ChatGPT tabs also show a small live status dot.
+**Version 0.2.0**
+
+Agent Tabs is a Chrome extension for keeping multiple ChatGPT agent tabs easy to distinguish at a glance. Assign each tab a colour, then use the small status dot to see when a ChatGPT agent is still working or has finished and is ready for the next prompt.
+
+Manual colourising also works on normal Chrome tabs; automatic state dots are currently ChatGPT-specific.
+
+![Agent Tabs with multiple coloured tabs](docs/images/overview.png)
 
 ## Install
 
-1. Download or clone this repository.
-2. Open `chrome://extensions` in Chrome.
-3. Turn on **Developer mode**.
-4. Click **Load unpacked**.
-5. Select the `agent-tabs` folder containing `manifest.json`.
-6. Refresh any ChatGPT tabs that were already open.
+```bash
+git clone https://github.com/bigggs/agent-tabs.git
+cd agent-tabs
+```
+
+Then:
+
+1. Open `chrome://extensions` in Chrome.
+2. Turn on **Developer mode**.
+3. Click **Load unpacked**.
+4. Select the cloned `agent-tabs` folder.
+5. Refresh any ChatGPT tabs that were already open.
 
 Requires Chrome 150 or newer.
 
 ## Use
 
-Right-click a tab → **Colour** → choose a colour.
+Right-click any tab → **Colour** → choose a colour.
 
-On coloured ChatGPT tabs:
+Use **Colour → Remove colour** to restore the normal favicon.
+
+For coloured ChatGPT tabs, the small dot shows agent state:
 
 - 🟡 **Yellow** — working / generating
-- 🟢 **Green** — finished in the background and ready to view
+- 🟢 **Green** — finished in the background and ready for the next prompt
 - 🔴 **Red** — error detected
 - **No dot** — idle or already viewed
 
 | Working | Ready |
 | --- | --- |
 | ![Working state](docs/images/state-working.png) | ![Ready state](docs/images/state-ready.png) |
-
-Use **Colour → Remove colour** to restore the normal favicon.
