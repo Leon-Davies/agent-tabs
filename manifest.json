@@ -2,11 +2,13 @@
   "manifest_version": 3,
   "name": "Agent Tabs",
   "version": "0.1.0",
-  "description": "Manually colour individual Chrome tabs using native tab groups.",
+  "description": "Add purely visual colour markers to individual Chrome tabs.",
   "minimum_chrome_version": "150",
   "permissions": [
+    "activeTab",
     "contextMenus",
-    "tabGroups"
+    "scripting",
+    "storage"
   ],
   "background": {
     "service_worker": "src/background/service-worker.js",
