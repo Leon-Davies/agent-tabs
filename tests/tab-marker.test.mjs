@@ -7,9 +7,12 @@ import {
   applyColourToTab,
   colourFromMenuId,
   forgetTab,
+  getStoredTabState,
   installContextMenus,
   reapplyStoredColour,
   removeColourFromTab,
+  setTabState,
+  stateStorageKey,
   storageKey
 } from "../src/background/tab-marker.js";
 
@@ -37,14 +40,20 @@ test("installs one top-level Colour menu with colour children", async () => {
   assert.equal(created.length, Object.keys(COLOURS).length + 3);
 });
 
-test("applies a marker with scripting and remembers the colour", async () => {
+test("applies a marker with current state and remembers the colour", async () => {
   const calls = [];
   const apis = {
     scripting: {
-      async executeScript(properties) { calls.push(["executeScript", properties]); }
+      async executeScript(properties) {
+        calls.push(["executeScript", properties]);
+        return [{ result: { markerInstalled: true } }];
+      }
     },
     storage: {
       session: {
+        async get(key) {
+          return key === stateStorageKey(7) ? { [key]: "ready" } : {};
+        },
         async set(value) { calls.push(["set", value]); }
       }
     }
@@ -53,7 +62,7 @@ test("applies a marker with scripting and remembers the colour", async () => {
   await applyColourToTab(7, "purple", apis);
   assert.equal(calls[0][0], "executeScript");
   assert.deepEqual(calls[0][1].target, { tabId: 7 });
-  assert.deepEqual(calls[0][1].args, [COLOURS.purple]);
+  assert.deepEqual(calls[0][1].args, [COLOURS.purple, "ready"]);
   assert.deepEqual(calls[1], ["set", { [storageKey(7)]: "purple" }]);
 });
 
@@ -61,7 +70,29 @@ test("rejects unsupported colours", async () => {
   await assert.rejects(() => applyColourToTab(7, "chartreuse", {}), RangeError);
 });
 
-test("remove injects the restore operation and clears session state", async () => {
+test("setTabState stores the state and redraws coloured tabs", async () => {
+  const calls = [];
+  const apis = {
+    scripting: {
+      async executeScript(properties) { calls.push(["executeScript", properties]); }
+    },
+    storage: {
+      session: {
+        async set(value) { calls.push(["set", value]); },
+        async get(key) {
+          return key === storageKey(7) ? { [key]: "cyan" } : {};
+        }
+      }
+    }
+  };
+
+  assert.equal(await setTabState(7, "working", apis), true);
+  assert.deepEqual(calls[0], ["set", { [stateStorageKey(7)]: "working" }]);
+  assert.equal(calls[1][0], "executeScript");
+  assert.deepEqual(calls[1][1].args, [COLOURS.cyan, "working"]);
+});
+
+test("remove injects the restore operation and clears session colour", async () => {
   const calls = [];
   const apis = {
     scripting: {
@@ -80,18 +111,22 @@ test("remove injects the restore operation and clears session state", async () =
   assert.deepEqual(calls[1], ["remove", storageKey(7)]);
 });
 
-test("reapplies a stored colour after a same-origin page reload", async () => {
+test("reapplies a stored colour with the current state", async () => {
   const calls = [];
-  const key = storageKey(12);
   const apis = {
     scripting: {
       async executeScript(properties) { calls.push(properties); }
     },
     storage: {
       session: {
-        async get(requestedKey) {
-          assert.equal(requestedKey, key);
-          return { [key]: "cyan" };
+        async get(key) {
+          if (key === storageKey(12)) {
+            return { [key]: "cyan" };
+          }
+          if (key === stateStorageKey(12)) {
+            return { [key]: "ready" };
+          }
+          return {};
         }
       }
     }
@@ -99,21 +134,15 @@ test("reapplies a stored colour after a same-origin page reload", async () => {
 
   assert.equal(await reapplyStoredColour(12, apis), true);
   assert.deepEqual(calls[0].target, { tabId: 12 });
-  assert.deepEqual(calls[0].args, [COLOURS.cyan]);
+  assert.deepEqual(calls[0].args, [COLOURS.cyan, "ready"]);
 });
 
-test("does nothing when no valid stored colour exists", async () => {
-  const key = storageKey(12);
-  const apis = {
-    scripting: { async executeScript() { throw new Error("must not run"); } },
-    storage: { session: { async get() { return { [key]: "bad" }; } } }
-  };
-
-  assert.equal(await reapplyStoredColour(12, apis), false);
+test("getStoredTabState defaults to idle", async () => {
+  assert.equal(await getStoredTabState(3, { get: async () => ({}) }), "idle");
 });
 
-test("forgets closed tab state", async () => {
+test("forgets closed tab colour and state", async () => {
   const calls = [];
-  await forgetTab(9, { async remove(key) { calls.push(key); } });
-  assert.deepEqual(calls, [storageKey(9)]);
+  await forgetTab(9, { async remove(keys) { calls.push(keys); } });
+  assert.deepEqual(calls, [[storageKey(9), stateStorageKey(9)]]);
 });
