@@ -17,6 +17,7 @@ export const MENU_IDS = Object.freeze({
 });
 
 const STORAGE_PREFIX = "agent-tabs-colour:";
+const STATE_PREFIX = "agent-tabs-state:";
 
 function titleCase(value) {
   return value.charAt(0).toUpperCase() + value.slice(1);
@@ -24,6 +25,10 @@ function titleCase(value) {
 
 export function storageKey(tabId) {
   return `${STORAGE_PREFIX}${tabId}`;
+}
+
+export function stateStorageKey(tabId) {
+  return `${STATE_PREFIX}${tabId}`;
 }
 
 export async function installContextMenus(contextMenus = chrome.contextMenus) {
@@ -69,10 +74,11 @@ export function colourFromMenuId(menuItemId) {
   return Object.hasOwn(COLOURS, colour) ? colour : null;
 }
 
-export function renderColourFavicon(hexColour) {
+export function renderColourFavicon(hexColour, state = "idle") {
   const markerId = "agent-tabs-colour-favicon";
   const originalRelAttribute = "data-agent-tabs-original-rel";
   const observerKey = "__agentTabsFaviconObserver";
+  const stateKey = "__agentTabsMarkerState";
   const head = document.head || document.documentElement;
 
   const isFaviconLink = (node) => {
@@ -104,25 +110,53 @@ export function renderColourFavicon(hexColour) {
     }
   }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = 32;
-  canvas.height = 32;
-  const context = canvas.getContext("2d");
+  const drawMarker = (colour, markerState) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 32;
+    canvas.height = 32;
+    const context = canvas.getContext("2d");
 
-  if (!context) {
-    throw new Error("Unable to create Agent Tabs favicon canvas.");
-  }
+    if (!context) {
+      throw new Error("Unable to create Agent Tabs favicon canvas.");
+    }
 
-  context.clearRect(0, 0, 32, 32);
-  context.fillStyle = hexColour;
-  context.beginPath();
+    context.clearRect(0, 0, 32, 32);
+    context.fillStyle = colour;
+    context.beginPath();
 
-  if (typeof context.roundRect === "function") {
-    context.roundRect(1, 1, 30, 30, 7);
-    context.fill();
-  } else {
-    context.fillRect(1, 1, 30, 30);
-  }
+    if (typeof context.roundRect === "function") {
+      context.roundRect(1, 1, 30, 30, 7);
+      context.fill();
+    } else {
+      context.fillRect(1, 1, 30, 30);
+    }
+
+    const badgeColours = {
+      working: "#F9AB00",
+      ready: "#34A853",
+      error: "#EA4335"
+    };
+    const badgeColour = badgeColours[markerState] || null;
+
+    if (badgeColour) {
+      context.fillStyle = "#ffffff";
+      context.beginPath();
+      context.arc(24, 24, 7, 0, Math.PI * 2);
+      context.fill();
+
+      context.fillStyle = badgeColour;
+      context.beginPath();
+      context.arc(24, 24, 5, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    return canvas.toDataURL("image/png");
+  };
+
+  globalThis[stateKey] = {
+    colour: hexColour,
+    state
+  };
 
   let marker = document.getElementById(markerId);
   if (!marker) {
@@ -133,7 +167,7 @@ export function renderColourFavicon(hexColour) {
   marker.rel = "icon";
   marker.type = "image/png";
   marker.sizes = "32x32";
-  marker.href = canvas.toDataURL("image/png");
+  marker.href = drawMarker(hexColour, state);
   head.appendChild(marker);
 
   if (!globalThis[observerKey]) {
@@ -162,8 +196,6 @@ export function renderColourFavicon(hexColour) {
         }
       }
 
-      // Keep the marker as the only active favicon declaration and as the
-      // final icon node after SPA frameworks mutate head metadata.
       if (activeMarker.parentNode === head && activeMarker !== head.lastElementChild) {
         head.appendChild(activeMarker);
       }
@@ -181,7 +213,8 @@ export function renderColourFavicon(hexColour) {
 
   return {
     markerInstalled: Boolean(document.getElementById(markerId)),
-    suppressedIcons
+    suppressedIcons,
+    state
   };
 }
 
@@ -189,12 +222,14 @@ export function removeColourFavicon() {
   const markerId = "agent-tabs-colour-favicon";
   const originalRelAttribute = "data-agent-tabs-original-rel";
   const observerKey = "__agentTabsFaviconObserver";
+  const stateKey = "__agentTabsMarkerState";
 
   if (globalThis[observerKey]) {
     globalThis[observerKey].disconnect();
     delete globalThis[observerKey];
   }
 
+  delete globalThis[stateKey];
   document.getElementById(markerId)?.remove();
 
   let restoredIcons = 0;
@@ -208,6 +243,13 @@ export function removeColourFavicon() {
   return { restoredIcons };
 }
 
+export async function getStoredTabState(tabId, storage = chrome.storage.session) {
+  const key = stateStorageKey(tabId);
+  const stored = await storage.get(key);
+  const state = stored[key];
+  return ["idle", "working", "ready", "error"].includes(state) ? state : "idle";
+}
+
 export async function applyColourToTab(tabId, colour, apis = chrome) {
   if (!Number.isInteger(tabId)) {
     throw new TypeError("A numeric tab id is required.");
@@ -217,10 +259,11 @@ export async function applyColourToTab(tabId, colour, apis = chrome) {
     throw new RangeError(`Unsupported colour: ${colour}`);
   }
 
+  const state = await getStoredTabState(tabId, apis.storage.session);
   const results = await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [COLOURS[colour]]
+    args: [COLOURS[colour], state]
   });
 
   const result = results?.[0]?.result;
@@ -230,6 +273,34 @@ export async function applyColourToTab(tabId, colour, apis = chrome) {
 
   await apis.storage.session.set({ [storageKey(tabId)]: colour });
   return result || null;
+}
+
+export async function setTabState(tabId, state, apis = chrome) {
+  if (!Number.isInteger(tabId)) {
+    throw new TypeError("A numeric tab id is required.");
+  }
+
+  if (!["idle", "working", "ready", "error"].includes(state)) {
+    throw new RangeError(`Unsupported tab state: ${state}`);
+  }
+
+  await apis.storage.session.set({ [stateStorageKey(tabId)]: state });
+
+  const colourKey = storageKey(tabId);
+  const stored = await apis.storage.session.get(colourKey);
+  const colour = stored[colourKey];
+
+  if (!Object.hasOwn(COLOURS, colour)) {
+    return false;
+  }
+
+  await apis.scripting.executeScript({
+    target: { tabId },
+    func: renderColourFavicon,
+    args: [COLOURS[colour], state]
+  });
+
+  return true;
 }
 
 export async function removeColourFromTab(tabId, apis = chrome) {
@@ -250,18 +321,19 @@ export async function reapplyStoredColour(tabId, apis = chrome) {
     return false;
   }
 
-  const key = storageKey(tabId);
-  const stored = await apis.storage.session.get(key);
-  const colour = stored[key];
+  const colourKey = storageKey(tabId);
+  const stored = await apis.storage.session.get(colourKey);
+  const colour = stored[colourKey];
 
   if (!Object.hasOwn(COLOURS, colour)) {
     return false;
   }
 
+  const state = await getStoredTabState(tabId, apis.storage.session);
   await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [COLOURS[colour]]
+    args: [COLOURS[colour], state]
   });
 
   return true;
@@ -269,6 +341,6 @@ export async function reapplyStoredColour(tabId, apis = chrome) {
 
 export async function forgetTab(tabId, storage = chrome.storage.session) {
   if (Number.isInteger(tabId)) {
-    await storage.remove(storageKey(tabId));
+    await storage.remove([storageKey(tabId), stateStorageKey(tabId)]);
   }
 }
