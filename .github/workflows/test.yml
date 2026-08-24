@@ -19,6 +19,7 @@ jobs:
           node --check src/background/service-worker.js
           node --check src/background/tab-marker.js
           node --check src/background/chatgpt-state-machine.js
+          node --check src/content/chatgpt-timing.js
           node --check src/content/chatgpt-state.js
       - name: Run tests
         run: node --test tests/*.test.mjs
