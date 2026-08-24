@@ -1,12 +1,50 @@
 # Agent Tabs
 
-**Version 0.4.1**
+**Version 0.5.0**
 
-Agent Tabs is a Chrome extension for keeping multiple ChatGPT agent tabs easy to distinguish at a glance. Assign colours to separate agents or tasks, while live status lights and response timestamps show which ChatGPT tabs are working and when they last replied.
+Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, and records when a response arrived so you can immediately see which agent is waiting for you.
 
-Status lights work automatically on ChatGPT tabs even when no manual colour is assigned. Manual colourising also works on normal Chrome tabs.
+Manual colour markers work on normal Chrome tabs too; automatic status and timing features are currently ChatGPT-specific.
 
 ![Agent Tabs with multiple coloured tabs](docs/images/overview.png)
+
+## Features
+
+### Persistent tab colours
+
+Right-click any tab → **Colour** → choose a colour.
+
+Colours are purely visual: Agent Tabs does not create Chrome tab groups. Assignments are stored locally so they survive refreshes and extension reloads. ChatGPT colours are remembered by conversation, so reopening the same conversation can restore its colour.
+
+Use **Colour → Remove colour** to return to the automatic ChatGPT status light or the site's normal favicon.
+
+### Live ChatGPT status lights
+
+ChatGPT tabs show their current state automatically, even if you have not assigned a manual colour:
+
+- 🟡 **Yellow** — ChatGPT is working / generating
+- 🟢 **Green** — a response finished in the background and is ready for your attention
+- 🔴 **Red** — the tab is idle / already viewed
+- 🔴 **Red with `!`** — an error was detected
+
+When a manual colour is assigned, the status appears as a small badge on top of the colour marker.
+
+### Response timestamps
+
+Newly completed ChatGPT responses receive a small timestamp such as:
+
+`Received 17:39:26`
+
+Agent Tabs also extends the page title, which means Chrome's tab hover card can show useful timing information such as:
+
+- `Working for 2m 13s`
+- `Last response: 17:39:26 · 4m ago`
+
+This is particularly useful when several agents are running at once and you want to know which one has just finished.
+
+### Local and lightweight
+
+Agent Tabs has no backend, analytics or remote data collection. Colour assignments and response timing are stored locally by the extension. Prompt and response content is not stored or transmitted by Agent Tabs.
 
 ## Install
 
@@ -36,25 +74,19 @@ Then:
 
 Requires Chrome 150 or newer.
 
-## Use
+## Updating
 
-Right-click any tab → **Colour** → choose a colour.
+If you cloned the repository:
 
-Manual colours are persisted locally so they survive page reloads and extension reloads. ChatGPT conversation colours are also remembered by conversation, allowing them to be restored when the conversation is reopened.
+```bash
+git pull origin main
+```
 
-Use **Colour → Remove colour** to remove the manual colour. ChatGPT tabs will keep their automatic status light.
+Then open `chrome://extensions`, click **Reload** on Agent Tabs, and refresh any open ChatGPT tabs.
 
-ChatGPT status lights:
+If you installed from a ZIP, download the latest ZIP and replace/reload your local extension folder.
 
-- 🟡 **Yellow** — working / generating
-- 🟢 **Green** — finished in the background and ready for the next prompt
-- 🔴 **Red** — seen, idle and not currently working
-
-Errors use a red light with a white `!` marker.
-
-Agent Tabs also adds a small `Received HH:MM:SS` timestamp to newly completed ChatGPT responses. The tab title is extended so Chrome's hover card shows either how long ChatGPT has been working or the time and age of the latest response, for example `Working for 2m 13s` or `Last response: 17:39:26 · 4m ago`.
-
-Response timing and colour assignments are stored locally in the extension and no conversation content is stored or transmitted.
+## Status examples
 
 | Working | Ready |
 | --- | --- |
