@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Agent Tabs",
-  "version": "0.3.0",
-  "description": "Add visual colour markers and live ChatGPT state lights to Chrome tabs.",
+  "version": "0.4.0",
+  "description": "Add visual colour markers, live ChatGPT state lights and response timestamps to Chrome tabs.",
   "minimum_chrome_version": "150",
   "permissions": [
     "activeTab",
@@ -25,6 +25,7 @@
         "https://chat.openai.com/*"
       ],
       "js": [
+        "src/content/chatgpt-timing.js",
         "src/content/chatgpt-state.js"
       ],
       "run_at": "document_idle"
