@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Agent Tabs",
-  "version": "0.4.1",
-  "description": "Add visual colour markers, live ChatGPT state lights and response timestamps to Chrome tabs.",
+  "version": "0.5.0",
+  "description": "Colour-code tabs and track live ChatGPT agent status, response timing and persistent conversation colours.",
   "minimum_chrome_version": "150",
   "permissions": [
     "activeTab",
