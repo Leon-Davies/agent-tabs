@@ -35,7 +35,8 @@ test("installs one top-level Colour menu with luminance-ordered colour children"
   await installContextMenus(contextMenus);
   const created = calls.filter((call) => call.method === "create");
   const topLevel = created.filter((call) => !call.properties.parentId);
-  const colourChildren = created.filter((call) => String(call.properties.id).startsWith(MENU_IDS.colourPrefix));
+  const expectedColourIds = COLOUR_ORDER.map((colour) => `${MENU_IDS.colourPrefix}${colour}`);
+  const colourChildren = created.filter((call) => expectedColourIds.includes(String(call.properties.id)));
 
   assert.equal(calls[0].method, "removeAll");
   assert.equal(topLevel.length, 1);
@@ -44,7 +45,7 @@ test("installs one top-level Colour menu with luminance-ordered colour children"
   assert.equal(created.length, Object.keys(COLOURS).length + 3);
   assert.deepEqual(
     colourChildren.map((call) => call.properties.id),
-    COLOUR_ORDER.map((colour) => `${MENU_IDS.colourPrefix}${colour}`)
+    expectedColourIds
   );
 });
 
