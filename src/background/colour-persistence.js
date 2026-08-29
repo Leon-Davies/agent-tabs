@@ -1,4 +1,4 @@
-import { COLOURS } from "./tab-marker.js";
+import { COLOURS } from "./palette.js";
 
 const PERSISTENT_TAB_PREFIX = "agent-tabs-persistent-colour:tab:";
 const PERSISTENT_CHAT_PREFIX = "agent-tabs-persistent-colour:chat:";
