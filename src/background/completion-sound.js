@@ -20,11 +20,11 @@ export function frequencyForColour(colour) {
   return Number.isFinite(frequency) ? frequency : null;
 }
 
-export function shouldPlayCompletionSound(previousState, nextState, visible, colour) {
-  return previousState === "working" &&
-    nextState === "ready" &&
-    visible === false &&
-    frequencyForColour(colour) !== null;
+export function shouldPlayCompletionSound(previousState, nextState, _visible, colour) {
+  const completed = previousState === "working" &&
+    (nextState === "ready" || nextState === "idle");
+
+  return completed && frequencyForColour(colour) !== null;
 }
 
 export async function ensureOffscreenDocument(apis = chrome) {
