@@ -54,7 +54,7 @@ You can adjust:
 - **Volume** — from silent to full extension volume
 - **Pitch spacing** — the number of semitones between neighbouring colours; increasing this makes adjacent colour notes easier to distinguish
 
-The settings page shows the complete colour → frequency scale and lets you preview any selected colour. Sound settings are stored locally.
+The settings page shows the complete colour → frequency scale and lets you preview any selected colour. Sound settings are stored in `chrome.storage.local`, so they stay on the local browser profile rather than being sent to an Agent Tabs backend.
 
 The tones are synthesized locally as short WAV sounds and played through Chrome's offscreen-audio capability. Agent Tabs does not download or transmit audio.
 
