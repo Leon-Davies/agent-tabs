@@ -2,7 +2,7 @@
 
 **Version 0.6.0**
 
-Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, records when a response arrived, and can play a subtle colour-specific note whenever a coloured agent finishes.
+Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, records when a response arrived, and can play a colour-specific note whenever a coloured agent finishes.
 
 Manual colour markers work on normal Chrome tabs too; automatic status, timing and completion-chime features are currently ChatGPT-specific.
 
@@ -13,6 +13,12 @@ Manual colour markers work on normal Chrome tabs too; automatic status, timing a
 ### Persistent tab colours
 
 Right-click any tab → **Colour** → choose a colour.
+
+Agent Tabs provides 15 colours. The menu is ordered from the darkest colour to the lightest:
+
+`Black → Navy → Brown → Pink → Purple → Teal → Red → Blue → Green → Orange → Grey → Cyan → Lime → Yellow → Cream`
+
+This same order drives the completion-note scale: darker colours produce lower notes and lighter colours produce higher notes.
 
 Colours are purely visual: Agent Tabs does not create Chrome tab groups. Assignments are stored locally so they survive refreshes and extension reloads. ChatGPT colours are remembered by conversation, so reopening the same conversation can restore its colour.
 
@@ -31,13 +37,24 @@ When a manual colour is assigned, the status appears as a small badge on top of 
 
 ### Colour-coded completion chimes
 
-When a manually coloured ChatGPT tab finishes a response, Agent Tabs plays one short note. Each of the nine tab colours has its own pitch, making it possible to learn which agent has finished without looking at the tab strip.
+When a manually coloured ChatGPT tab finishes a response, Agent Tabs plays one short note. The note pitch follows the 15-colour dark-to-light scale, making it possible to learn which agent has finished without looking at the tab strip.
 
 - both foreground and background completions produce a chime
 - only manually coloured ChatGPT tabs produce a chime
 - one response completion produces one note
 - removing the manual colour also removes its completion chime
 - right-click a coloured tab → **Preview colour sound** to hear its note immediately
+
+#### Sound settings
+
+Right-click any tab → **Sound settings…** to open the Agent Tabs sound controls.
+
+You can adjust:
+
+- **Volume** — from silent to full extension volume
+- **Pitch spacing** — the number of semitones between neighbouring colours; increasing this makes adjacent colour notes easier to distinguish
+
+The settings page shows the complete colour → frequency scale and lets you preview any selected colour. Sound settings are stored locally.
 
 The tones are synthesized locally as short WAV sounds and played through Chrome's offscreen-audio capability. Agent Tabs does not download or transmit audio.
 
@@ -56,7 +73,7 @@ This is particularly useful when several agents are running at once and you want
 
 ### Local and lightweight
 
-Agent Tabs has no backend, analytics or remote data collection. Colour assignments and response timing are stored locally by the extension. Prompt and response content is not stored or transmitted by Agent Tabs.
+Agent Tabs has no backend, analytics or remote data collection. Colour assignments, response timing and sound settings are stored locally by the extension. Prompt and response content is not stored or transmitted by Agent Tabs.
 
 The extension uses Chrome's offscreen-document capability only to play the short locally generated completion note when required.
 
