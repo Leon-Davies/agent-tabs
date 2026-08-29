@@ -8,6 +8,19 @@ Manual colour markers work on normal Chrome tabs too; automatic status, timing a
 
 ![Agent Tabs with multiple coloured tabs](docs/images/overview.png)
 
+## What's new in 0.6
+
+Version 0.6 turns the tab colour into both a visual and audible identity for a ChatGPT conversation:
+
+- the palette has expanded from 9 to **15 colours**
+- colours are ordered from **darkest to lightest** in the selection menu
+- completion notes follow that same order: **dark colours = lower notes, light colours = higher notes**
+- coloured ChatGPT tabs chime when a response finishes in either the foreground or background
+- **Volume** and **pitch spacing** can be adjusted from a dedicated sound-settings page
+- any colour can be previewed immediately without waiting for a ChatGPT response
+
+The six new colours are **Black, Navy, Brown, Teal, Lime and Cream**. Existing colour values and saved assignments remain compatible with earlier versions.
+
 ## Features
 
 ### Persistent tab colours
@@ -51,10 +64,12 @@ Right-click any tab → **Sound settings…** to open the Agent Tabs sound contr
 
 You can adjust:
 
-- **Volume** — from silent to full extension volume
-- **Pitch spacing** — the number of semitones between neighbouring colours; increasing this makes adjacent colour notes easier to distinguish
+- **Volume** — 0–100%, with a default of 55%
+- **Pitch spacing** — 0.5–2.5 semitones between neighbouring colours, with a default of 1.25 semitones; increasing this makes adjacent colour notes easier to distinguish
 
-The settings page shows the complete colour → frequency scale and lets you preview any selected colour. Sound settings are stored in `chrome.storage.local`, so they stay on the local browser profile rather than being sent to an Agent Tabs backend.
+Black is the base note at 220 Hz. The other colours rise from that base according to their position in the dark-to-light palette and your chosen pitch spacing.
+
+The settings page shows the complete colour → frequency scale and lets you preview any selected colour. Changes are stored locally and take effect for subsequent previews and completion chimes.
 
 The tones are synthesized locally as short WAV sounds and played through Chrome's offscreen-audio capability. Agent Tabs does not download or transmit audio.
 
