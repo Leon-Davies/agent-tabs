@@ -24,6 +24,8 @@ import {
 
 const CHATGPT_SIGNAL = "agent-tabs:chatgpt-signal";
 const PREVIEW_SOUND_MENU_ID = "agent-tabs-preview-colour-sound";
+const SOUND_SETTINGS_MENU_ID = "agent-tabs-sound-settings";
+const PREVIEW_SOUND_MESSAGE = "agent-tabs:preview-colour-sound";
 
 chrome.runtime.onInstalled.addListener(() => {
   installMenus().catch((error) => {
@@ -36,6 +38,11 @@ async function installMenus() {
   await chrome.contextMenus.create({
     id: PREVIEW_SOUND_MENU_ID,
     title: "Preview colour sound",
+    contexts: ["tab"]
+  });
+  await chrome.contextMenus.create({
+    id: SOUND_SETTINGS_MENU_ID,
+    title: "Sound settings…",
     contexts: ["tab"]
   });
 }
@@ -62,6 +69,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
 
+  if (String(info.menuItemId) === SOUND_SETTINGS_MENU_ID) {
+    chrome.runtime.openOptionsPage().catch((error) => {
+      console.error("Agent Tabs failed to open sound settings.", error);
+    });
+    return;
+  }
+
   if (String(info.menuItemId) === MENU_IDS.removeColour) {
     removeColourAndPersistence(tab.id, tabUrl).catch((error) => {
       console.error("Agent Tabs failed to remove the tab colour.", error);
@@ -70,6 +84,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === PREVIEW_SOUND_MESSAGE) {
+    playCompletionSound(String(message.colour || ""))
+      .then((played) => sendResponse({ ok: played }))
+      .catch((error) => {
+        console.error("Agent Tabs failed to preview a settings-page sound.", error);
+        sendResponse({ ok: false, error: String(error?.message || error) });
+      });
+    return true;
+  }
+
   if (message?.type !== CHATGPT_SIGNAL || !Number.isInteger(sender.tab?.id)) {
     return false;
   }
@@ -174,10 +198,8 @@ async function handleChatGptSignal(tabId, phase, visible, url = null) {
   // lights independent from whether the user has assigned a manual colour.
   await setTabState(tabId, nextState);
 
-  // Every completed response on a manually coloured ChatGPT tab gets one
-  // colour-specific note, whether the tab is visible or in the background.
-  // Requiring the previous state to be working keeps normal completions
-  // at-most-once despite repeated idle/visibility signals from the page.
+  // One completion note is emitted for each manually coloured response that
+  // moves out of the working state, whether the tab is visible or hidden.
   if (shouldPlayCompletionSound(previousState, nextState, visible, manualColour)) {
     try {
       await playCompletionSound(manualColour);
