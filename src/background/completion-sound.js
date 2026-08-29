@@ -1,30 +1,16 @@
+import { isSupportedColour } from "./palette.js";
+import { frequencyForColour, getSoundSettings } from "./sound-settings.js";
+
 export const COMPLETION_SOUND_MESSAGE = "agent-tabs:play-completion-note";
 export const OFFSCREEN_DOCUMENT_PATH = "src/offscreen/audio.html";
 
-export const COLOUR_NOTE_FREQUENCIES = Object.freeze({
-  grey: 261.63,
-  blue: 293.66,
-  cyan: 329.63,
-  green: 349.23,
-  yellow: 392.0,
-  orange: 440.0,
-  red: 493.88,
-  pink: 523.25,
-  purple: 587.33
-});
-
 let creatingOffscreenDocument = null;
-
-export function frequencyForColour(colour) {
-  const frequency = COLOUR_NOTE_FREQUENCIES[colour];
-  return Number.isFinite(frequency) ? frequency : null;
-}
 
 export function shouldPlayCompletionSound(previousState, nextState, _visible, colour) {
   const completed = previousState === "working" &&
     (nextState === "ready" || nextState === "idle");
 
-  return completed && frequencyForColour(colour) !== null;
+  return completed && isSupportedColour(colour);
 }
 
 export async function ensureOffscreenDocument(apis = chrome) {
@@ -52,18 +38,32 @@ export async function ensureOffscreenDocument(apis = chrome) {
   return true;
 }
 
-export async function playCompletionSound(colour, apis = chrome) {
-  const frequency = frequencyForColour(colour);
-  if (frequency === null) {
+export async function playCompletionSound(colour, apis = chrome, settingsOverride = null) {
+  if (!isSupportedColour(colour)) {
+    return false;
+  }
+
+  const settings = settingsOverride || await getSoundSettings(apis.storage.local);
+  if (settings.volume <= 0) {
+    return false;
+  }
+
+  const frequency = frequencyForColour(colour, settings);
+  if (!Number.isFinite(frequency)) {
     return false;
   }
 
   await ensureOffscreenDocument(apis);
-  await apis.runtime.sendMessage({
+  const response = await apis.runtime.sendMessage({
     type: COMPLETION_SOUND_MESSAGE,
     colour,
-    frequency
+    frequency,
+    volume: settings.volume
   });
+
+  if (response?.ok === false) {
+    throw new Error(response.error || "The offscreen audio document could not play the note.");
+  }
 
   return true;
 }
