@@ -1,7 +1,7 @@
 const COMPLETION_SOUND_MESSAGE = "agent-tabs:play-completion-note";
 const NOTE_DURATION_SECONDS = 0.24;
 const SAMPLE_RATE = 44100;
-const PEAK_AMPLITUDE = 0.28;
+const PEAK_AMPLITUDE = 0.78;
 
 const activeAudio = new Set();
 
@@ -12,7 +12,7 @@ function writeAscii(view, offset, text) {
 }
 
 function createToneWav(frequency) {
-  if (!Number.isFinite(frequency) || frequency < 100 || frequency > 2000) {
+  if (!Number.isFinite(frequency) || frequency < 100 || frequency > 3000) {
     throw new RangeError("Unsupported completion-note frequency.");
   }
 
@@ -61,11 +61,12 @@ function createToneWav(frequency) {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
-async function playLightNote(frequency) {
+async function playLightNote(frequency, volume) {
   const blob = createToneWav(frequency);
   const objectUrl = URL.createObjectURL(blob);
   const audio = new Audio(objectUrl);
   audio.preload = "auto";
+  audio.volume = Math.min(1, Math.max(0, Number(volume)));
   activeAudio.add(audio);
 
   const cleanup = () => {
@@ -89,7 +90,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return false;
   }
 
-  playLightNote(Number(message.frequency))
+  playLightNote(Number(message.frequency), Number(message.volume))
     .then(() => sendResponse({ ok: true }))
     .catch((error) => {
       console.error("Agent Tabs failed to play a completion note.", error);
