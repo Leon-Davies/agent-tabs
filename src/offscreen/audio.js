@@ -1,7 +1,7 @@
 const COMPLETION_SOUND_MESSAGE = "agent-tabs:play-completion-note";
-const NOTE_DURATION_SECONDS = 0.22;
+const NOTE_DURATION_SECONDS = 0.24;
 const SAMPLE_RATE = 44100;
-const PEAK_AMPLITUDE = 0.11;
+const PEAK_AMPLITUDE = 0.28;
 
 const activeAudio = new Set();
 
@@ -37,7 +37,7 @@ function createToneWav(frequency) {
   view.setUint32(40, dataLength, true);
 
   const attackSamples = Math.max(1, Math.floor(SAMPLE_RATE * 0.012));
-  const releaseStart = Math.floor(sampleCount * 0.28);
+  const releaseStart = Math.floor(sampleCount * 0.3);
 
   for (let index = 0; index < sampleCount; index += 1) {
     let envelope;
@@ -53,7 +53,7 @@ function createToneWav(frequency) {
 
     const time = index / SAMPLE_RATE;
     const fundamental = Math.sin(2 * Math.PI * frequency * time);
-    const overtone = 0.12 * Math.sin(2 * Math.PI * frequency * 2 * time);
+    const overtone = 0.14 * Math.sin(2 * Math.PI * frequency * 2 * time);
     const sample = Math.max(-1, Math.min(1, (fundamental + overtone) * envelope * PEAK_AMPLITUDE));
     view.setInt16(44 + index * 2, Math.round(sample * 32767), true);
   }
