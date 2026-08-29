@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Tabs sound settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="settings-shell">
+    <header>
+      <p class="eyebrow">Agent Tabs</p>
+      <h1>Sound settings</h1>
+      <p class="intro">Tune how strongly the completion notes differ and how loud they play. Colours are ordered from darkest / lowest pitch to lightest / highest pitch.</p>
+    </header>
+
+    <section class="setting-card" aria-labelledby="volume-heading">
+      <div class="setting-heading">
+        <div>
+          <h2 id="volume-heading">Volume</h2>
+          <p>Controls completion-note loudness.</p>
+        </div>
+        <output id="volume-value" for="volume"></output>
+      </div>
+      <input id="volume" type="range" min="0" max="100" step="5">
+    </section>
+
+    <section class="setting-card" aria-labelledby="pitch-heading">
+      <div class="setting-heading">
+        <div>
+          <h2 id="pitch-heading">Pitch spacing</h2>
+          <p>Semitones between neighbouring colours. A larger value makes colours easier to distinguish.</p>
+        </div>
+        <output id="pitch-value" for="pitch-spacing"></output>
+      </div>
+      <input id="pitch-spacing" type="range" min="0.5" max="2.5" step="0.25">
+    </section>
+
+    <section class="setting-card" aria-labelledby="scale-heading">
+      <div class="scale-header">
+        <div>
+          <h2 id="scale-heading">Colour → pitch scale</h2>
+          <p>The selection menu uses this same order.</p>
+        </div>
+        <button id="preview-selected" type="button">Preview selected</button>
+      </div>
+      <label class="preview-label" for="preview-colour">Preview colour</label>
+      <select id="preview-colour"></select>
+      <ol id="scale-list" class="scale-list"></ol>
+    </section>
+
+    <div class="actions">
+      <button id="reset" type="button" class="secondary">Reset defaults</button>
+      <span id="status" role="status" aria-live="polite"></span>
+    </div>
+  </main>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>
