@@ -174,9 +174,10 @@ async function handleChatGptSignal(tabId, phase, visible, url = null) {
   // lights independent from whether the user has assigned a manual colour.
   await setTabState(tabId, nextState);
 
-  // A completion note is deliberately limited to manually coloured ChatGPT
-  // tabs that finish while hidden. The working -> ready transition makes the
-  // notification at-most-once for a normal response completion signal.
+  // Every completed response on a manually coloured ChatGPT tab gets one
+  // colour-specific note, whether the tab is visible or in the background.
+  // Requiring the previous state to be working keeps normal completions
+  // at-most-once despite repeated idle/visibility signals from the page.
   if (shouldPlayCompletionSound(previousState, nextState, visible, manualColour)) {
     try {
       await playCompletionSound(manualColour);
