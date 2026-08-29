@@ -23,12 +23,13 @@ test("frequency lookup rejects unknown colours", () => {
   assert.equal(frequencyForColour(null), null);
 });
 
-test("completion sound only triggers for hidden coloured working-to-ready transition", () => {
+test("completion sound triggers for both foreground and background coloured completions", () => {
   assert.equal(shouldPlayCompletionSound("working", "ready", false, "blue"), true);
-  assert.equal(shouldPlayCompletionSound("working", "idle", true, "blue"), false);
+  assert.equal(shouldPlayCompletionSound("working", "idle", true, "blue"), true);
   assert.equal(shouldPlayCompletionSound("ready", "ready", false, "blue"), false);
+  assert.equal(shouldPlayCompletionSound("working", "error", false, "blue"), false);
   assert.equal(shouldPlayCompletionSound("working", "ready", false, null), false);
-  assert.equal(shouldPlayCompletionSound("working", "ready", false, "unknown"), false);
+  assert.equal(shouldPlayCompletionSound("working", "idle", true, "unknown"), false);
 });
 
 test("playCompletionSound creates an offscreen audio document and sends the pitch", async () => {
