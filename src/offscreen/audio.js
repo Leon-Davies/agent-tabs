@@ -1,51 +1,87 @@
 const COMPLETION_SOUND_MESSAGE = "agent-tabs:play-completion-note";
-const NOTE_DURATION_SECONDS = 0.2;
-const PEAK_GAIN = 0.045;
+const NOTE_DURATION_SECONDS = 0.22;
+const SAMPLE_RATE = 44100;
+const PEAK_AMPLITUDE = 0.11;
 
-let audioContext = null;
+const activeAudio = new Set();
 
-function getAudioContext() {
-  if (!audioContext) {
-    const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!AudioContextClass) {
-      throw new Error("Web Audio is not available in the Agent Tabs offscreen document.");
-    }
-    audioContext = new AudioContextClass();
+function writeAscii(view, offset, text) {
+  for (let index = 0; index < text.length; index += 1) {
+    view.setUint8(offset + index, text.charCodeAt(index));
   }
-  return audioContext;
 }
 
-async function playLightNote(frequency) {
+function createToneWav(frequency) {
   if (!Number.isFinite(frequency) || frequency < 100 || frequency > 2000) {
     throw new RangeError("Unsupported completion-note frequency.");
   }
 
-  const context = getAudioContext();
-  if (context.state === "suspended") {
-    await context.resume();
+  const sampleCount = Math.floor(SAMPLE_RATE * NOTE_DURATION_SECONDS);
+  const bytesPerSample = 2;
+  const dataLength = sampleCount * bytesPerSample;
+  const buffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(buffer);
+
+  writeAscii(view, 0, "RIFF");
+  view.setUint32(4, 36 + dataLength, true);
+  writeAscii(view, 8, "WAVE");
+  writeAscii(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, SAMPLE_RATE, true);
+  view.setUint32(28, SAMPLE_RATE * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 16, true);
+  writeAscii(view, 36, "data");
+  view.setUint32(40, dataLength, true);
+
+  const attackSamples = Math.max(1, Math.floor(SAMPLE_RATE * 0.012));
+  const releaseStart = Math.floor(sampleCount * 0.28);
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    let envelope;
+    if (index < attackSamples) {
+      envelope = index / attackSamples;
+    } else if (index >= releaseStart) {
+      const remaining = sampleCount - index;
+      envelope = Math.max(0, remaining / (sampleCount - releaseStart));
+      envelope *= envelope;
+    } else {
+      envelope = 1;
+    }
+
+    const time = index / SAMPLE_RATE;
+    const fundamental = Math.sin(2 * Math.PI * frequency * time);
+    const overtone = 0.12 * Math.sin(2 * Math.PI * frequency * 2 * time);
+    const sample = Math.max(-1, Math.min(1, (fundamental + overtone) * envelope * PEAK_AMPLITUDE));
+    view.setInt16(44 + index * 2, Math.round(sample * 32767), true);
   }
 
-  const now = context.currentTime;
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
+  return new Blob([buffer], { type: "audio/wav" });
+}
 
-  oscillator.type = "sine";
-  oscillator.frequency.setValueAtTime(frequency, now);
+async function playLightNote(frequency) {
+  const blob = createToneWav(frequency);
+  const objectUrl = URL.createObjectURL(blob);
+  const audio = new Audio(objectUrl);
+  audio.preload = "auto";
+  activeAudio.add(audio);
 
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(PEAK_GAIN, now + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + NOTE_DURATION_SECONDS);
+  const cleanup = () => {
+    activeAudio.delete(audio);
+    URL.revokeObjectURL(objectUrl);
+  };
 
-  oscillator.connect(gain);
-  gain.connect(context.destination);
+  audio.addEventListener("ended", cleanup, { once: true });
+  audio.addEventListener("error", cleanup, { once: true });
 
-  oscillator.addEventListener("ended", () => {
-    oscillator.disconnect();
-    gain.disconnect();
-  }, { once: true });
-
-  oscillator.start(now);
-  oscillator.stop(now + NOTE_DURATION_SECONDS + 0.01);
+  try {
+    await audio.play();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -57,7 +93,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     .then(() => sendResponse({ ok: true }))
     .catch((error) => {
       console.error("Agent Tabs failed to play a completion note.", error);
-      sendResponse({ ok: false });
+      sendResponse({ ok: false, error: String(error?.message || error) });
     });
 
   return true;
