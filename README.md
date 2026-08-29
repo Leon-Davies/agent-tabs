@@ -1,10 +1,10 @@
 # Agent Tabs
 
-**Version 0.5.0**
+**Version 0.6.0**
 
-Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, and records when a response arrived so you can immediately see which agent is waiting for you.
+Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, records when a response arrived, and can play a subtle colour-specific note when a background agent finishes.
 
-Manual colour markers work on normal Chrome tabs too; automatic status and timing features are currently ChatGPT-specific.
+Manual colour markers work on normal Chrome tabs too; automatic status, timing and completion-chime features are currently ChatGPT-specific.
 
 ![Agent Tabs with multiple coloured tabs](docs/images/overview.png)
 
@@ -29,6 +29,17 @@ ChatGPT tabs show their current state automatically, even if you have not assign
 
 When a manual colour is assigned, the status appears as a small badge on top of the colour marker.
 
+### Colour-coded completion chimes
+
+When a manually coloured ChatGPT tab finishes a response while it is in the background, Agent Tabs plays one short, soft note. Each of the nine tab colours has its own pitch, making it possible to learn which agent has finished without looking at the tab strip.
+
+- only manually coloured ChatGPT tabs produce a chime
+- foreground responses stay silent because you are already watching them
+- one response completion produces one note
+- removing the manual colour also removes its completion chime
+
+The tones are generated locally with the browser's Web Audio API. Agent Tabs does not download or transmit audio.
+
 ### Response timestamps
 
 Newly completed ChatGPT responses receive a small timestamp such as:
@@ -46,12 +57,14 @@ This is particularly useful when several agents are running at once and you want
 
 Agent Tabs has no backend, analytics or remote data collection. Colour assignments and response timing are stored locally by the extension. Prompt and response content is not stored or transmitted by Agent Tabs.
 
+The extension uses Chrome's offscreen-document capability only to synthesize the short completion note when required.
+
 ## Install
 
 ### Option 1 — Clone the repository
 
 ```bash
-git clone https://github.com/bigggs/agent-tabs.git
+git clone https://github.com/Leon-Davies/agent-tabs.git
 cd agent-tabs
 ```
 
