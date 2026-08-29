@@ -17,14 +17,35 @@ import {
   persistColour,
   removePersistentColour
 } from "./colour-persistence.js";
+import {
+  playCompletionSound,
+  shouldPlayCompletionSound
+} from "./completion-sound.js";
 
 const CHATGPT_SIGNAL = "agent-tabs:chatgpt-signal";
+const PREVIEW_SOUND_MENU_ID = "agent-tabs-preview-colour-sound";
+const SOUND_SETTINGS_MENU_ID = "agent-tabs-sound-settings";
+const PREVIEW_SOUND_MESSAGE = "agent-tabs:preview-colour-sound";
 
 chrome.runtime.onInstalled.addListener(() => {
-  installContextMenus().catch((error) => {
+  installMenus().catch((error) => {
     console.error("Agent Tabs failed to install its tab context menu.", error);
   });
 });
+
+async function installMenus() {
+  await installContextMenus();
+  await chrome.contextMenus.create({
+    id: PREVIEW_SOUND_MENU_ID,
+    title: "Preview colour sound",
+    contexts: ["tab"]
+  });
+  await chrome.contextMenus.create({
+    id: SOUND_SETTINGS_MENU_ID,
+    title: "Sound settings…",
+    contexts: ["tab"]
+  });
+}
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab || !Number.isInteger(tab.id)) {
@@ -41,6 +62,20 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
 
+  if (String(info.menuItemId) === PREVIEW_SOUND_MENU_ID) {
+    previewTabSound(tab.id, tabUrl).catch((error) => {
+      console.error("Agent Tabs failed to preview the tab colour sound.", error);
+    });
+    return;
+  }
+
+  if (String(info.menuItemId) === SOUND_SETTINGS_MENU_ID) {
+    chrome.runtime.openOptionsPage().catch((error) => {
+      console.error("Agent Tabs failed to open sound settings.", error);
+    });
+    return;
+  }
+
   if (String(info.menuItemId) === MENU_IDS.removeColour) {
     removeColourAndPersistence(tab.id, tabUrl).catch((error) => {
       console.error("Agent Tabs failed to remove the tab colour.", error);
@@ -49,6 +84,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === PREVIEW_SOUND_MESSAGE) {
+    playCompletionSound(String(message.colour || ""))
+      .then((played) => sendResponse({ ok: played }))
+      .catch((error) => {
+        console.error("Agent Tabs failed to preview a settings-page sound.", error);
+        sendResponse({ ok: false, error: String(error?.message || error) });
+      });
+    return true;
+  }
+
   if (message?.type !== CHATGPT_SIGNAL || !Number.isInteger(sender.tab?.id)) {
     return false;
   }
@@ -126,13 +171,40 @@ async function restorePersistentColour(tabId, suppliedUrl = null) {
   return persistentColour;
 }
 
+async function getManualColour(tabId) {
+  const colourKey = storageKey(tabId);
+  const session = await chrome.storage.session.get(colourKey);
+  return session[colourKey] || null;
+}
+
+async function previewTabSound(tabId, url = null) {
+  await restorePersistentColour(tabId, url);
+  const manualColour = await getManualColour(tabId);
+  if (!manualColour) {
+    return false;
+  }
+
+  return playCompletionSound(manualColour);
+}
+
 async function handleChatGptSignal(tabId, phase, visible, url = null) {
   await restorePersistentColour(tabId, url);
 
   const previousState = await getStoredTabState(tabId);
   const nextState = deriveTabState(previousState, phase, visible);
+  const manualColour = await getManualColour(tabId);
 
   // Always render the current state. This makes automatic ChatGPT status
   // lights independent from whether the user has assigned a manual colour.
   await setTabState(tabId, nextState);
+
+  // One completion note is emitted for each manually coloured response that
+  // moves out of the working state, whether the tab is visible or hidden.
+  if (shouldPlayCompletionSound(previousState, nextState, visible, manualColour)) {
+    try {
+      await playCompletionSound(manualColour);
+    } catch (error) {
+      console.error("Agent Tabs failed to play the response completion note.", error);
+    }
+  }
 }

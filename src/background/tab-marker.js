@@ -1,14 +1,6 @@
-export const COLOURS = Object.freeze({
-  grey: "#9AA0A6",
-  blue: "#4285F4",
-  red: "#EA4335",
-  yellow: "#F9AB00",
-  green: "#34A853",
-  pink: "#D01884",
-  purple: "#A142F4",
-  cyan: "#24C1E0",
-  orange: "#FA7B17"
-});
+import { COLOURS, COLOUR_ORDER } from "./palette.js";
+
+export { COLOURS, COLOUR_ORDER };
 
 export const STATUS_COLOURS = Object.freeze({
   idle: "#EA4335",
@@ -48,7 +40,7 @@ export async function installContextMenus(contextMenus = chrome.contextMenus) {
     contexts: ["tab"]
   });
 
-  for (const colour of Object.keys(COLOURS)) {
+  for (const colour of COLOUR_ORDER) {
     await contextMenus.create({
       id: `${MENU_IDS.colourPrefix}${colour}`,
       parentId: MENU_IDS.colourRoot,
