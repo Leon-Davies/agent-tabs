@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   COLOURS,
+  COLOUR_ORDER,
   MENU_IDS,
   applyColourToTab,
   colourFromMenuId,
@@ -19,11 +20,12 @@ import {
 
 test("menu ids map only supported colours", () => {
   assert.equal(colourFromMenuId(`${MENU_IDS.colourPrefix}purple`), "purple");
+  assert.equal(colourFromMenuId(`${MENU_IDS.colourPrefix}cream`), "cream");
   assert.equal(colourFromMenuId(`${MENU_IDS.colourPrefix}not-a-colour`), null);
   assert.equal(colourFromMenuId(MENU_IDS.removeColour), null);
 });
 
-test("installs one top-level Colour menu with colour children", async () => {
+test("installs one top-level Colour menu with luminance-ordered colour children", async () => {
   const calls = [];
   const contextMenus = {
     async removeAll() { calls.push({ method: "removeAll" }); },
@@ -33,12 +35,17 @@ test("installs one top-level Colour menu with colour children", async () => {
   await installContextMenus(contextMenus);
   const created = calls.filter((call) => call.method === "create");
   const topLevel = created.filter((call) => !call.properties.parentId);
+  const colourChildren = created.filter((call) => String(call.properties.id).startsWith(MENU_IDS.colourPrefix));
 
   assert.equal(calls[0].method, "removeAll");
   assert.equal(topLevel.length, 1);
   assert.equal(topLevel[0].properties.id, MENU_IDS.colourRoot);
   assert.equal(topLevel[0].properties.title, "Colour");
   assert.equal(created.length, Object.keys(COLOURS).length + 3);
+  assert.deepEqual(
+    colourChildren.map((call) => call.properties.id),
+    COLOUR_ORDER.map((colour) => `${MENU_IDS.colourPrefix}${colour}`)
+  );
 });
 
 test("applies a coloured marker with current ChatGPT state", async () => {
