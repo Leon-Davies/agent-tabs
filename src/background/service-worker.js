@@ -17,6 +17,10 @@ import {
   persistColour,
   removePersistentColour
 } from "./colour-persistence.js";
+import {
+  playCompletionSound,
+  shouldPlayCompletionSound
+} from "./completion-sound.js";
 
 const CHATGPT_SIGNAL = "agent-tabs:chatgpt-signal";
 
@@ -126,13 +130,31 @@ async function restorePersistentColour(tabId, suppliedUrl = null) {
   return persistentColour;
 }
 
+async function getManualColour(tabId) {
+  const colourKey = storageKey(tabId);
+  const session = await chrome.storage.session.get(colourKey);
+  return session[colourKey] || null;
+}
+
 async function handleChatGptSignal(tabId, phase, visible, url = null) {
   await restorePersistentColour(tabId, url);
 
   const previousState = await getStoredTabState(tabId);
   const nextState = deriveTabState(previousState, phase, visible);
+  const manualColour = await getManualColour(tabId);
 
   // Always render the current state. This makes automatic ChatGPT status
   // lights independent from whether the user has assigned a manual colour.
   await setTabState(tabId, nextState);
+
+  // A completion note is deliberately limited to manually coloured ChatGPT
+  // tabs that finish while hidden. The working -> ready transition makes the
+  // notification at-most-once for a normal response completion signal.
+  if (shouldPlayCompletionSound(previousState, nextState, visible, manualColour)) {
+    try {
+      await playCompletionSound(manualColour);
+    } catch (error) {
+      console.error("Agent Tabs failed to play the response completion note.", error);
+    }
+  }
 }
