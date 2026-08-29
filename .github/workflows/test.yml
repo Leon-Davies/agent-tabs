@@ -18,11 +18,14 @@ jobs:
         run: |
           node --check src/background/service-worker.js
           node --check src/background/tab-marker.js
+          node --check src/background/palette.js
           node --check src/background/chatgpt-state-machine.js
           node --check src/background/colour-persistence.js
           node --check src/background/completion-sound.js
+          node --check src/background/sound-settings.js
           node --check src/content/chatgpt-timing.js
           node --check src/content/chatgpt-state.js
           node --check src/offscreen/audio.js
+          node --check src/options/options.js
       - name: Run tests
         run: node --test tests/*.test.mjs
