@@ -17,9 +17,16 @@ function clamp(value, minimum, maximum) {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
+function numericSetting(value) {
+  if (value === null || value === undefined || value === "") {
+    return Number.NaN;
+  }
+  return Number(value);
+}
+
 export function normalizeAttentionSettings(settings = {}) {
-  const rawInterval = Number(settings.intervalMs);
-  const rawIntensity = Number(settings.intensity);
+  const rawInterval = numericSetting(settings.intervalMs);
+  const rawIntensity = numericSetting(settings.intensity);
 
   return {
     enabled: typeof settings.enabled === "boolean"
