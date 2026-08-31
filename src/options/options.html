@@ -3,21 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent Tabs sound settings</title>
+  <title>Agent Tabs settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <main class="settings-shell">
     <header>
       <p class="eyebrow">Agent Tabs</p>
-      <h1>Sound settings</h1>
-      <p class="intro">Tune how strongly the completion notes differ and how loud they play. Colours are ordered from darkest / lowest pitch to lightest / highest pitch.</p>
+      <h1>Settings</h1>
+      <p class="intro">Tune completion sounds and how strongly a green ready tab calls for your attention.</p>
     </header>
+
+    <section class="setting-card" aria-labelledby="attention-heading">
+      <div class="setting-heading attention-heading-row">
+        <div>
+          <h2 id="attention-heading">Ready attention animation</h2>
+          <p>When a background response is ready, move the green status indicator to the centre and pulse it between green and white until you view the tab.</p>
+        </div>
+        <label class="toggle-control">
+          <input id="attention-enabled" type="checkbox">
+          <span>Enabled</span>
+        </label>
+      </div>
+
+      <div class="attention-layout">
+        <div class="attention-preview-wrap">
+          <div id="attention-preview" class="attention-preview" aria-label="Ready animation preview">
+            <span id="attention-preview-dot" class="attention-preview-dot" aria-hidden="true"></span>
+          </div>
+          <span class="preview-caption">Preview on a light tab colour</span>
+        </div>
+
+        <div class="attention-controls">
+          <label class="range-label" for="attention-speed">
+            <span>
+              <strong>Flash speed</strong>
+              <small>Lower values flash faster.</small>
+            </span>
+            <output id="attention-speed-value" for="attention-speed"></output>
+          </label>
+          <input id="attention-speed" type="range" min="300" max="1400" step="50">
+
+          <label class="range-label" for="attention-intensity">
+            <span>
+              <strong>Intensity</strong>
+              <small>Controls how large and prominent the centre pulse becomes.</small>
+            </span>
+            <output id="attention-intensity-value" for="attention-intensity"></output>
+          </label>
+          <input id="attention-intensity" type="range" min="30" max="100" step="5">
+        </div>
+      </div>
+    </section>
 
     <section class="setting-card" aria-labelledby="volume-heading">
       <div class="setting-heading">
         <div>
-          <h2 id="volume-heading">Volume</h2>
+          <h2 id="volume-heading">Completion sound volume</h2>
           <p>Controls completion-note loudness.</p>
         </div>
         <output id="volume-value" for="volume"></output>
