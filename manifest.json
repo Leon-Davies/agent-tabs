@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Agent Tabs",
-  "version": "0.6.0",
-  "description": "Colour-code tabs and track ChatGPT agent status, response timing and configurable colour-coded completion chimes.",
+  "version": "0.7.0",
+  "description": "Colour-code tabs and track ChatGPT status, response timing, completion chimes and animated ready attention.",
   "minimum_chrome_version": "150",
   "permissions": [
     "activeTab",
