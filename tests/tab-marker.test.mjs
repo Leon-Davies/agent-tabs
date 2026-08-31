@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { ATTENTION_DEFAULTS, ATTENTION_SETTINGS_KEY } from "../src/background/attention-settings.js";
 import {
   COLOURS,
   COLOUR_ORDER,
@@ -49,7 +50,7 @@ test("installs one top-level Colour menu with luminance-ordered colour children"
   );
 });
 
-test("applies a coloured marker with current ChatGPT state", async () => {
+test("applies a coloured marker with current ChatGPT state and default attention settings", async () => {
   const calls = [];
   const apis = {
     scripting: {
@@ -69,8 +70,34 @@ test("applies a coloured marker with current ChatGPT state", async () => {
   };
 
   await applyColourToTab(7, "purple", apis);
-  assert.deepEqual(calls[0][1].args, [COLOURS.purple, "ready"]);
+  assert.deepEqual(calls[0][1].args, [COLOURS.purple, "ready", ATTENTION_DEFAULTS]);
   assert.deepEqual(calls[1], ["set", { [storageKey(7)]: "purple" }]);
+});
+
+test("configured attention settings are passed into ready favicon rendering", async () => {
+  const calls = [];
+  const configured = { enabled: false, intervalMs: 900, intensity: 0.55 };
+  const apis = {
+    scripting: {
+      async executeScript(properties) { calls.push(properties); }
+    },
+    storage: {
+      session: {
+        async set() {},
+        async get(key) {
+          return key === storageKey(7) ? { [key]: "cyan" } : {};
+        }
+      },
+      local: {
+        async get(key) {
+          return key === ATTENTION_SETTINGS_KEY ? { [key]: configured } : {};
+        }
+      }
+    }
+  };
+
+  await setTabState(7, "ready", apis);
+  assert.deepEqual(calls[0].args, [COLOURS.cyan, "ready", configured]);
 });
 
 test("manual colour on a non-ChatGPT tab has no automatic status badge", async () => {
@@ -91,7 +118,7 @@ test("manual colour on a non-ChatGPT tab has no automatic status badge", async (
   };
 
   await applyColourToTab(4, "blue", apis);
-  assert.deepEqual(calls[0].args, [COLOURS.blue, null]);
+  assert.deepEqual(calls[0].args, [COLOURS.blue, null, ATTENTION_DEFAULTS]);
 });
 
 test("rejects unsupported colours", async () => {
@@ -114,7 +141,7 @@ test("setTabState renders a standalone status light without a manual colour", as
 
   assert.equal(await setTabState(7, "working", apis), true);
   assert.deepEqual(calls[0], ["set", { [stateStorageKey(7)]: "working" }]);
-  assert.deepEqual(calls[1][1].args, [null, "working"]);
+  assert.deepEqual(calls[1][1].args, [null, "working", ATTENTION_DEFAULTS]);
 });
 
 test("setTabState overlays state on a coloured tab", async () => {
@@ -134,7 +161,7 @@ test("setTabState overlays state on a coloured tab", async () => {
   };
 
   await setTabState(7, "idle", apis);
-  assert.deepEqual(calls[1][1].args, [COLOURS.cyan, "idle"]);
+  assert.deepEqual(calls[1][1].args, [COLOURS.cyan, "idle", ATTENTION_DEFAULTS]);
 });
 
 test("removing a manual colour keeps the ChatGPT status light", async () => {
@@ -155,7 +182,7 @@ test("removing a manual colour keeps the ChatGPT status light", async () => {
 
   await removeColourFromTab(7, apis);
   assert.deepEqual(calls[0], ["remove", storageKey(7)]);
-  assert.deepEqual(calls[1][1].args, [null, "ready"]);
+  assert.deepEqual(calls[1][1].args, [null, "ready", ATTENTION_DEFAULTS]);
 });
 
 test("removing a manual colour restores the favicon on a non-ChatGPT tab", async () => {
@@ -196,7 +223,7 @@ test("reapplies a standalone status light after ChatGPT reload", async () => {
   };
 
   assert.equal(await reapplyStoredMarker(12, apis), true);
-  assert.deepEqual(calls[0].args, [null, "idle"]);
+  assert.deepEqual(calls[0].args, [null, "idle", ATTENTION_DEFAULTS]);
 });
 
 test("reapplies manual colour without a status on non-ChatGPT tabs", async () => {
@@ -218,7 +245,7 @@ test("reapplies manual colour without a status on non-ChatGPT tabs", async () =>
   };
 
   assert.equal(await reapplyStoredMarker(12, apis), true);
-  assert.deepEqual(calls[0].args, [COLOURS.cyan, null]);
+  assert.deepEqual(calls[0].args, [COLOURS.cyan, null, ATTENTION_DEFAULTS]);
 });
 
 test("getStoredTabState defaults to idle while explicit state can be absent", async () => {

@@ -1,4 +1,5 @@
 import { COLOURS, COLOUR_ORDER } from "./palette.js";
+import { ATTENTION_DEFAULTS, getAttentionSettings } from "./attention-settings.js";
 
 export { COLOURS, COLOUR_ORDER };
 
@@ -29,6 +30,18 @@ export function storageKey(tabId) {
 
 export function stateStorageKey(tabId) {
   return `${STATE_PREFIX}${tabId}`;
+}
+
+async function attentionSettingsForApis(apis) {
+  if (!apis?.storage?.local) {
+    return { ...ATTENTION_DEFAULTS };
+  }
+
+  try {
+    return await getAttentionSettings(apis.storage.local);
+  } catch {
+    return { ...ATTENTION_DEFAULTS };
+  }
 }
 
 export async function installContextMenus(contextMenus = chrome.contextMenus) {
@@ -74,12 +87,33 @@ export function colourFromMenuId(menuItemId) {
   return Object.hasOwn(COLOURS, colour) ? colour : null;
 }
 
-export function renderColourFavicon(hexColour = null, state = null) {
+export function renderColourFavicon(hexColour = null, state = null, attentionSettings = null) {
   const markerId = "agent-tabs-colour-favicon";
   const originalRelAttribute = "data-agent-tabs-original-rel";
   const observerKey = "__agentTabsFaviconObserver";
   const stateKey = "__agentTabsMarkerState";
+  const animationKey = "__agentTabsReadyAnimationTimer";
   const head = document.head || document.documentElement;
+
+  const rawAttention = attentionSettings || {};
+  const attention = {
+    enabled: typeof rawAttention.enabled === "boolean" ? rawAttention.enabled : true,
+    intervalMs: Number.isFinite(Number(rawAttention.intervalMs))
+      ? Math.min(1400, Math.max(300, Math.round(Number(rawAttention.intervalMs))))
+      : 650,
+    intensity: Number.isFinite(Number(rawAttention.intensity))
+      ? Math.min(1, Math.max(0.3, Number(rawAttention.intensity)))
+      : 0.8
+  };
+
+  const stopReadyAnimation = () => {
+    if (globalThis[animationKey]) {
+      clearInterval(globalThis[animationKey]);
+      delete globalThis[animationKey];
+    }
+  };
+
+  stopReadyAnimation();
 
   const isFaviconLink = (node) => {
     if (!node || node.nodeType !== Node.ELEMENT_NODE || node.tagName !== "LINK") {
@@ -110,7 +144,7 @@ export function renderColourFavicon(hexColour = null, state = null) {
     }
   }
 
-  const drawMarker = (colour, markerState) => {
+  const drawMarker = (colour, markerState, readyPhase = false) => {
     const canvas = document.createElement("canvas");
     canvas.width = 32;
     canvas.height = 32;
@@ -143,34 +177,62 @@ export function renderColourFavicon(hexColour = null, state = null) {
     const badgeColour = badgeColours[markerState] || null;
 
     if (badgeColour) {
-      const standalone = !colour;
-      const centreX = standalone ? 16 : 24;
-      const centreY = standalone ? 16 : 24;
-      const outerRadius = standalone ? 10 : 7;
-      const innerRadius = standalone ? 7 : 5;
+      const animatedReady = markerState === "ready" && attention.enabled;
 
-      context.fillStyle = "#ffffff";
-      context.beginPath();
-      context.arc(centreX, centreY, outerRadius, 0, Math.PI * 2);
-      context.fill();
+      if (animatedReady) {
+        const centreX = 16;
+        const centreY = 16;
+        const outerRadius = 10 + (3 * attention.intensity);
+        const innerRadius = 6 + (2.5 * attention.intensity);
+        const outerColour = readyPhase ? "#34A853" : "#ffffff";
+        const innerColour = readyPhase ? "#ffffff" : "#34A853";
+        const outlineColour = readyPhase ? "#ffffff" : "#34A853";
 
-      context.fillStyle = badgeColour;
-      context.beginPath();
-      context.arc(centreX, centreY, innerRadius, 0, Math.PI * 2);
-      context.fill();
-
-      if (markerState === "error") {
-        context.strokeStyle = "#ffffff";
-        context.lineWidth = standalone ? 2.5 : 1.5;
-        context.lineCap = "round";
+        context.fillStyle = outerColour;
         context.beginPath();
-        context.moveTo(centreX, centreY - (standalone ? 4 : 3));
-        context.lineTo(centreX, centreY + (standalone ? 1 : 0.5));
+        context.arc(centreX, centreY, outerRadius, 0, Math.PI * 2);
+        context.fill();
+
+        context.strokeStyle = outlineColour;
+        context.lineWidth = 1.5 + attention.intensity;
+        context.beginPath();
+        context.arc(centreX, centreY, outerRadius - 1, 0, Math.PI * 2);
         context.stroke();
+
+        context.fillStyle = innerColour;
+        context.beginPath();
+        context.arc(centreX, centreY, innerRadius, 0, Math.PI * 2);
+        context.fill();
+      } else {
+        const standalone = !colour;
+        const centreX = standalone ? 16 : 24;
+        const centreY = standalone ? 16 : 24;
+        const outerRadius = standalone ? 10 : 7;
+        const innerRadius = standalone ? 7 : 5;
+
         context.fillStyle = "#ffffff";
         context.beginPath();
-        context.arc(centreX, centreY + (standalone ? 4 : 3), standalone ? 1.2 : 0.8, 0, Math.PI * 2);
+        context.arc(centreX, centreY, outerRadius, 0, Math.PI * 2);
         context.fill();
+
+        context.fillStyle = badgeColour;
+        context.beginPath();
+        context.arc(centreX, centreY, innerRadius, 0, Math.PI * 2);
+        context.fill();
+
+        if (markerState === "error") {
+          context.strokeStyle = "#ffffff";
+          context.lineWidth = standalone ? 2.5 : 1.5;
+          context.lineCap = "round";
+          context.beginPath();
+          context.moveTo(centreX, centreY - (standalone ? 4 : 3));
+          context.lineTo(centreX, centreY + (standalone ? 1 : 0.5));
+          context.stroke();
+          context.fillStyle = "#ffffff";
+          context.beginPath();
+          context.arc(centreX, centreY + (standalone ? 4 : 3), standalone ? 1.2 : 0.8, 0, Math.PI * 2);
+          context.fill();
+        }
       }
     }
 
@@ -179,7 +241,8 @@ export function renderColourFavicon(hexColour = null, state = null) {
 
   globalThis[stateKey] = {
     colour: hexColour,
-    state
+    state,
+    attention
   };
 
   let marker = document.getElementById(markerId);
@@ -191,8 +254,24 @@ export function renderColourFavicon(hexColour = null, state = null) {
   marker.rel = "icon";
   marker.type = "image/png";
   marker.sizes = "32x32";
-  marker.href = drawMarker(hexColour, state);
+  marker.href = drawMarker(hexColour, state, false);
   head.appendChild(marker);
+
+  if (state === "ready" && attention.enabled) {
+    let readyPhase = false;
+    globalThis[animationKey] = setInterval(() => {
+      const activeMarker = document.getElementById(markerId);
+      const markerState = globalThis[stateKey];
+
+      if (!activeMarker || markerState?.state !== "ready") {
+        stopReadyAnimation();
+        return;
+      }
+
+      readyPhase = !readyPhase;
+      activeMarker.href = drawMarker(markerState.colour, markerState.state, readyPhase);
+    }, attention.intervalMs);
+  }
 
   if (!globalThis[observerKey]) {
     const observer = new MutationObserver((mutations) => {
@@ -239,7 +318,8 @@ export function renderColourFavicon(hexColour = null, state = null) {
     markerInstalled: Boolean(document.getElementById(markerId)),
     suppressedIcons,
     state,
-    hasManualColour: Boolean(hexColour)
+    hasManualColour: Boolean(hexColour),
+    attentionAnimated: state === "ready" && attention.enabled
   };
 }
 
@@ -248,6 +328,12 @@ export function removeColourFavicon() {
   const originalRelAttribute = "data-agent-tabs-original-rel";
   const observerKey = "__agentTabsFaviconObserver";
   const stateKey = "__agentTabsMarkerState";
+  const animationKey = "__agentTabsReadyAnimationTimer";
+
+  if (globalThis[animationKey]) {
+    clearInterval(globalThis[animationKey]);
+    delete globalThis[animationKey];
+  }
 
   if (globalThis[observerKey]) {
     globalThis[observerKey].disconnect();
@@ -289,10 +375,11 @@ export async function applyColourToTab(tabId, colour, apis = chrome) {
   }
 
   const state = await getExplicitStoredTabState(tabId, apis.storage.session);
+  const attention = await attentionSettingsForApis(apis);
   const results = await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [COLOURS[colour], state]
+    args: [COLOURS[colour], state, attention]
   });
 
   const result = results?.[0]?.result;
@@ -319,11 +406,12 @@ export async function setTabState(tabId, state, apis = chrome) {
   const stored = await apis.storage.session.get(colourKey);
   const colour = stored[colourKey];
   const hexColour = Object.hasOwn(COLOURS, colour) ? COLOURS[colour] : null;
+  const attention = await attentionSettingsForApis(apis);
 
   await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [hexColour, state]
+    args: [hexColour, state, attention]
   });
 
   return true;
@@ -338,10 +426,11 @@ export async function removeColourFromTab(tabId, apis = chrome) {
   const state = await getExplicitStoredTabState(tabId, apis.storage.session);
 
   if (state) {
+    const attention = await attentionSettingsForApis(apis);
     await apis.scripting.executeScript({
       target: { tabId },
       func: renderColourFavicon,
-      args: [null, state]
+      args: [null, state, attention]
     });
     return;
   }
@@ -367,10 +456,11 @@ export async function reapplyStoredMarker(tabId, apis = chrome) {
     return false;
   }
 
+  const attention = await attentionSettingsForApis(apis);
   await apis.scripting.executeScript({
     target: { tabId },
     func: renderColourFavicon,
-    args: [hasColour ? COLOURS[colour] : null, state]
+    args: [hasColour ? COLOURS[colour] : null, state, attention]
   });
 
   return true;
