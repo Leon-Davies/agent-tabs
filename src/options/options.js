@@ -123,6 +123,7 @@ function renderAttentionPreview(settings) {
     attentionPreviewDot.style.top = "auto";
     attentionPreviewDot.style.right = "5px";
     attentionPreviewDot.style.bottom = "5px";
+    attentionPreviewDot.style.transform = "none";
     attentionPreviewDot.style.background = "#34A853";
     attentionPreviewDot.style.border = "4px solid #ffffff";
     return;
@@ -135,11 +136,11 @@ function renderAttentionPreview(settings) {
   attentionPreviewDot.style.top = "50%";
   attentionPreviewDot.style.right = "auto";
   attentionPreviewDot.style.bottom = "auto";
+  attentionPreviewDot.style.transform = "translate(-50%, -50%)";
 
   let phase = false;
   const paintPhase = () => {
     phase = !phase;
-    attentionPreviewDot.style.transform = "translate(-50%, -50%)";
     attentionPreviewDot.style.background = phase ? "#34A853" : "#ffffff";
     attentionPreviewDot.style.border = `${Math.max(4, Math.round((outerSize - innerSize) / 2))}px solid ${phase ? "#ffffff" : "#34A853"}`;
   };
