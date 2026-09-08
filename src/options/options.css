@@ -75,8 +75,13 @@ input[type="range"] {
   margin: 8px 0 0;
 }
 
+input[type="range"]:disabled {
+  opacity: 0.45;
+}
+
 button,
-select {
+select,
+input {
   font: inherit;
 }
 
@@ -92,6 +97,93 @@ button {
 
 button:hover {
   background: color-mix(in srgb, CanvasText 13%, Canvas);
+}
+
+.toggle-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.toggle-control input {
+  width: 18px;
+  height: 18px;
+}
+
+.attention-heading-row {
+  align-items: flex-start;
+}
+
+.attention-layout {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  margin-top: 16px;
+}
+
+.attention-preview-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.attention-preview {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 17px;
+  background: #FDE293;
+  border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+  overflow: hidden;
+}
+
+.attention-preview-dot {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 50%;
+}
+
+.preview-caption {
+  max-width: 120px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.65;
+}
+
+.attention-controls {
+  display: grid;
+  gap: 16px;
+}
+
+.range-label {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.range-label span {
+  display: grid;
+  gap: 2px;
+}
+
+.range-label small {
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.68;
+}
+
+.range-label output {
+  min-width: 66px;
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
 }
 
 .preview-label {
@@ -156,13 +248,19 @@ select {
 
   .setting-heading,
   .scale-header,
-  .actions {
+  .actions,
+  .range-label {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .setting-heading output {
+  .setting-heading output,
+  .range-label output {
     text-align: left;
+  }
+
+  .attention-layout {
+    grid-template-columns: 1fr;
   }
 
   .scale-header button,

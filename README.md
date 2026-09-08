@@ -1,25 +1,26 @@
 # Agent Tabs
 
-**Version 0.6.0**
+**Version 0.7.0**
 
-Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, records when a response arrived, and can play a colour-specific note whenever a coloured agent finishes.
+Agent Tabs is a lightweight Chrome extension for people who run several ChatGPT agents or coding conversations at once. It makes each tab easier to identify, shows what ChatGPT is doing, records when a response arrived, plays colour-specific completion notes, and can animate ready tabs so they are much easier to find in a crowded tab strip.
 
-Manual colour markers work on normal Chrome tabs too; automatic status, timing and completion-chime features are currently ChatGPT-specific.
+Manual colour markers work on normal Chrome tabs too; automatic status, timing, completion-chime and ready-attention features are currently ChatGPT-specific.
 
 ![Agent Tabs with multiple coloured tabs](docs/images/overview.png)
 
-## What's new in 0.6
+## What's new in 0.7
 
-Version 0.6 turns the tab colour into both a visual and audible identity for a ChatGPT conversation:
+Version 0.7 makes the green **ready** state much harder to miss when many ChatGPT conversations are open:
 
-- the palette has expanded from 9 to **15 colours**
-- colours are ordered from **darkest to lightest** in the selection menu
-- completion notes follow that same order: **dark colours = lower notes, light colours = higher notes**
-- coloured ChatGPT tabs chime when a response finishes in either the foreground or background
-- **Volume** and **pitch spacing** can be adjusted from a dedicated sound-settings page
-- any colour can be previewed immediately without waiting for a ChatGPT response
+- a ready tab can move its green status indicator into the **centre** of the colour square
+- the indicator pulses between **green and white** until the tab is viewed
+- the animation works on both dark and light tab colours, where a small corner badge can otherwise be difficult to spot
+- the animation can be turned **on or off**
+- **flash speed** and **intensity** are adjustable
+- changes are applied to already-open Agent Tabs markers without waiting for the next response
+- the existing sound controls and the new attention controls now live together under **Agent Tabs settings…**
 
-The six new colours are **Black, Navy, Brown, Teal, Lime and Cream**. Existing colour values and saved assignments remain compatible with earlier versions.
+The ready animation is enabled by default at a moderate speed and intensity. Disabling it restores the previous static corner-ready badge on manually coloured tabs.
 
 ## Features
 
@@ -46,7 +47,23 @@ ChatGPT tabs show their current state automatically, even if you have not assign
 - 🔴 **Red** — the tab is idle / already viewed
 - 🔴 **Red with `!`** — an error was detected
 
-When a manual colour is assigned, the status appears as a small badge on top of the colour marker.
+When a manual colour is assigned, non-ready states appear as a small badge on top of the colour marker.
+
+### Ready attention animation
+
+When a response finishes in a background ChatGPT tab, the tab enters the green **ready** state. With the attention animation enabled, Agent Tabs replaces the small corner-ready badge with a much larger centred indicator that alternates between green and white.
+
+The animation continues only while the tab remains ready. As soon as you view the tab and the state returns to idle, the animation stops automatically.
+
+Right-click any tab → **Agent Tabs settings…** to configure it:
+
+- **Enabled** — turn the ready animation on or off
+- **Flash speed** — 300–1400 ms between animation frames; lower values flash faster
+- **Intensity** — 30–100%; higher values make the centred pulse larger and more prominent
+
+The settings page includes a live preview on a light-coloured square so the effect can be tuned without waiting for a real response. The default is enabled, **650 ms** and **80% intensity**.
+
+If the animation is disabled, ready tabs retain the earlier static green status badge behaviour.
 
 ### Colour-coded completion chimes
 
@@ -60,7 +77,7 @@ When a manually coloured ChatGPT tab finishes a response, Agent Tabs plays one s
 
 #### Sound settings
 
-Right-click any tab → **Sound settings…** to open the Agent Tabs sound controls.
+Right-click any tab → **Agent Tabs settings…** to open the shared settings page.
 
 You can adjust:
 
@@ -88,7 +105,7 @@ This is particularly useful when several agents are running at once and you want
 
 ### Local and lightweight
 
-Agent Tabs has no backend, analytics or remote data collection. Colour assignments, response timing and sound settings are stored locally by the extension. Prompt and response content is not stored or transmitted by Agent Tabs.
+Agent Tabs has no backend, analytics or remote data collection. Colour assignments, response timing, sound settings and attention-animation settings are stored locally by the extension. Prompt and response content is not stored or transmitted by Agent Tabs.
 
 The extension uses Chrome's offscreen-document capability only to play the short locally generated completion note when required.
 

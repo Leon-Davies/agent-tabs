@@ -24,8 +24,9 @@ import {
 
 const CHATGPT_SIGNAL = "agent-tabs:chatgpt-signal";
 const PREVIEW_SOUND_MENU_ID = "agent-tabs-preview-colour-sound";
-const SOUND_SETTINGS_MENU_ID = "agent-tabs-sound-settings";
+const SETTINGS_MENU_ID = "agent-tabs-settings";
 const PREVIEW_SOUND_MESSAGE = "agent-tabs:preview-colour-sound";
+const ATTENTION_SETTINGS_CHANGED_MESSAGE = "agent-tabs:attention-settings-changed";
 
 chrome.runtime.onInstalled.addListener(() => {
   installMenus().catch((error) => {
@@ -41,8 +42,8 @@ async function installMenus() {
     contexts: ["tab"]
   });
   await chrome.contextMenus.create({
-    id: SOUND_SETTINGS_MENU_ID,
-    title: "Sound settings…",
+    id: SETTINGS_MENU_ID,
+    title: "Agent Tabs settings…",
     contexts: ["tab"]
   });
 }
@@ -69,9 +70,9 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
 
-  if (String(info.menuItemId) === SOUND_SETTINGS_MENU_ID) {
+  if (String(info.menuItemId) === SETTINGS_MENU_ID) {
     chrome.runtime.openOptionsPage().catch((error) => {
-      console.error("Agent Tabs failed to open sound settings.", error);
+      console.error("Agent Tabs failed to open settings.", error);
     });
     return;
   }
@@ -89,6 +90,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then((played) => sendResponse({ ok: played }))
       .catch((error) => {
         console.error("Agent Tabs failed to preview a settings-page sound.", error);
+        sendResponse({ ok: false, error: String(error?.message || error) });
+      });
+    return true;
+  }
+
+  if (message?.type === ATTENTION_SETTINGS_CHANGED_MESSAGE) {
+    refreshOpenMarkers()
+      .then(() => sendResponse({ ok: true }))
+      .catch((error) => {
+        console.error("Agent Tabs failed to refresh attention animation settings.", error);
         sendResponse({ ok: false, error: String(error?.message || error) });
       });
     return true;
@@ -125,6 +136,15 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     forgetPersistentTab(tabId)
   ]).catch(() => {});
 });
+
+async function refreshOpenMarkers() {
+  const tabs = await chrome.tabs.query({});
+  await Promise.allSettled(
+    tabs
+      .filter((tab) => Number.isInteger(tab.id))
+      .map((tab) => reapplyStoredMarker(tab.id))
+  );
+}
 
 async function applyColourAndPersist(tabId, colour, url) {
   await applyColourToTab(tabId, colour);
